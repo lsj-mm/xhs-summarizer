@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>编程英语</title>
+<link rel="stylesheet" href="/static/tools/_shared/base.css" />
+<style>
+  :root{
+    --accent:#2563eb; --accent-dark:#1d4ed8; --accent-soft:#eff5ff;
+  }
+  body{background:var(--bg)}
+  .wrap{max-width:1080px; margin:0 auto; padding:24px 20px 48px}
+  header.top{display:flex; align-items:center; gap:12px; margin-bottom:16px}
+  header.top .logo{
+    width:38px;height:38px;border-radius:11px;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:19px;flex:0 0 auto;
+  }
+  header.top h1{font-size:18px;margin:0;font-weight:650}
+  header.top .sub{color:var(--muted);font-size:12.5px}
+  .grow{flex:1}
+  .tabs{display:flex; gap:6px; margin-bottom:16px; border-bottom:1px solid var(--line); padding-bottom:10px}
+  .tabs button{
+    font-family:inherit; font-size:13.5px; padding:8px 14px; border-radius:9px;
+    border:1px solid transparent; background:transparent; color:var(--muted); cursor:pointer;
+  }
+  .tabs button:hover{background:#f3f4f6}
+  .tabs button.on{background:var(--accent-soft); border-color:#cfe0ff; color:var(--accent-dark); font-weight:650}
+  .layout{display:grid; grid-template-columns:250px minmax(0,1fr); gap:16px; align-items:start}
+  .side .card{padding:14px 15px; margin-bottom:12px}
+  .side .card h2{font-size:12.5px; margin:0 0 10px; color:var(--muted); font-weight:650}
+  .field label{display:block; font-size:12.5px; font-weight:600; margin-bottom:5px}
+  .field select{
+    width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:9px;
+    font-family:inherit; font-size:13px; background:#fff; color:var(--ink);
+  }
+  .field select:focus, textarea:focus{outline:2px solid rgba(37,99,235,.18); border-color:var(--accent)}
+  .hint{color:var(--muted); font-size:12.5px; line-height:1.65}
+  .chips{display:flex; flex-wrap:wrap; gap:6px}
+  .chip{
+    font-family:inherit; font-size:12.5px; padding:6px 10px; border-radius:8px;
+    border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer; text-align:left;
+  }
+  .chip:hover{background:#f3f6fb; border-color:#cfe0ff}
+  .chat-card{
+    display:flex; flex-direction:column; min-height:520px; max-height:820px;
+    height:calc(100vh - 170px); background:var(--panel); border:1px solid var(--line);
+    border-radius:14px; box-shadow:var(--shadow); overflow:hidden;
+  }
+  .chat-head{
+    display:flex; align-items:center; gap:10px; padding:13px 16px; border-bottom:1px solid var(--line);
+    background:#fff; flex:0 0 auto;
+  }
+  .chat-head b{font-size:13.5px; font-weight:650}
+  .chat-head .hint{margin-left:8px}
+  .msgs{flex:1; overflow-y:auto; padding:18px 16px; background:#fbfcfe; scroll-behavior:smooth}
+  .msg{display:flex; gap:9px; margin-bottom:16px; align-items:flex-start}
+  .msg.user{flex-direction:row-reverse}
+  .avatar{
+    width:28px;height:28px;border-radius:9px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:700;background:#eef1f6;color:var(--muted);
+  }
+  .msg.user .avatar{background:var(--accent);color:#fff}
+  .bubble{
+    max-width:78%; padding:11px 13px; border-radius:13px; font-size:13.5px; line-height:1.7;
+    word-break:break-word;
+  }
+  .msg.assistant .bubble{background:#fff; border:1px solid var(--line); border-top-left-radius:4px}
+  .msg.user .bubble{background:var(--accent); color:#fff; border-top-right-radius:4px}
+  .bubble.err{background:#fff7f6; border-color:#f3c9c4; color:#a4261b}
+  .empty{display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    min-height:100%; padding:24px 10px; color:var(--muted)}
+  .empty .big{font-size:34px; margin-bottom:6px}
+  .empty h3{margin:0 0 6px; font-size:15px; color:var(--ink); font-weight:650}
+  .empty p{margin:0 0 14px; font-size:12.5px; max-width:420px}
+  .empty .chips{justify-content:center}
+  .composer{flex:0 0 auto; border-top:1px solid var(--line); padding:12px 14px 12px; background:#fff}
+  textarea{
+    width:100%; min-height:54px; max-height:160px; resize:vertical; padding:10px 12px;
+    border:1px solid var(--line); border-radius:10px; font-family:inherit; font-size:13.5px;
+    line-height:1.6; background:#fcfcfd; color:var(--ink);
+  }
+  .composer-row{display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap}
+  .composer-row .hint{flex:1; font-size:11.5px}
+  .mic{
+    font-family:inherit; font-size:12.5px; padding:7px 12px; border-radius:9px;
+    border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer; white-space:nowrap;
+  }
+  .mic:hover{background:#f3f6fb; border-color:#cfe0ff}
+  .mic.rec{background:#fdecea; border-color:#f3c9c4; color:#a4261b}
+  .mic:disabled{opacity:.55; cursor:not-allowed}
+  button.primary{
+    font-family:inherit; font-size:13.5px; font-weight:550; padding:8px 18px; border-radius:9px;
+    border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer;
+  }
+  button.primary:hover{background:var(--accent-dark)}
+  button.primary:disabled{opacity:.55; cursor:not-allowed}
+  .pill{display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px;
+    font-size:11.5px; background:#f1f2f5; color:var(--muted)}
+  .pill.ok{background:#e7f7ee; color:var(--ok)}
+  .pill.busy{background:#fff5e5; color:#a86800}
+  .typing{display:inline-flex; gap:4px; align-items:center; height:20px}
+  .typing i{width:6px;height:6px;border-radius:50%;background:#9aa3b2;display:block;animation:blink 1.2s infinite}
+  .typing i:nth-child(2){animation-delay:.2s}
+  .typing i:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-2px)}}
+  .md p{margin:0 0 8px}
+  .md p:last-child{margin-bottom:0}
+  .md h2,.md h3,.md h4{margin:11px 0 6px; line-height:1.4}
+  .md h2{font-size:15px} .md h3{font-size:14px} .md h4{font-size:13.5px}
+  .md ul,.md ol{margin:4px 0 9px; padding-left:20px}
+  .md li{margin:2px 0}
+  .md code{background:#f0f2f6; padding:1px 5px; border-radius:5px;
+    font-family:"Cascadia Mono",Consolas,monospace; font-size:12.5px}
+  .md pre{background:#1c1f26; color:#e6e9ef; padding:11px 12px; border-radius:9px; overflow:auto;
+    margin:7px 0 9px; font-size:12.5px; line-height:1.6}
+  .md pre code{background:none; padding:0; color:inherit}
+  .md blockquote{border-left:3px solid #cfe0ff; margin:7px 0; padding:1px 10px; color:#4b5563}
+  .md a{color:var(--accent-dark)}
+  .md hr{border:0;border-top:1px solid var(--line);margin:10px 0}
+  .speak-word{cursor:pointer; border-radius:3px; transition:background .15s}
+  .speak-word:hover{background:#e8f0ff}
+  .speak-word.speaking{background:#fff3cd}
+  .say-btn{
+    border:0; background:transparent; color:#9aa3b2; cursor:pointer; font-size:12px;
+    padding:0 3px; margin-left:2px; border-radius:5px; line-height:1.2;
+  }
+  .say-btn:hover{color:var(--accent-dark); background:#eef4ff}
+  .say-btn.speaking{color:#a86800; background:#fff3cd}
+  .mic.speaking{background:#fff3cd; border-color:#f0dcb4; color:#8a6100}
+  .mini{
+    font-family:inherit; font-size:12px; padding:4px 9px; border-radius:7px;
+    border:1px solid var(--line); background:#fff; color:var(--muted); cursor:pointer;
+  }
+  .mini:hover{background:#f3f4f6; color:var(--ink)}
+  .practice-bar{
+    display:flex; align-items:center; gap:8px; margin-bottom:8px; padding:7px 10px;
+    background:#f4f7ff; border:1px solid #d8e4ff; border-radius:9px; font-size:12.5px;
+  }
+  .pbar-label{color:var(--accent-dark); font-weight:650; white-space:nowrap}
+  .pbar-text{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155}
+  .practice-result{
+    flex:0 0 auto; max-height:260px; overflow:auto; padding:12px 16px;
+    background:#fbfcff; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+  }
+  .prhead{display:flex; align-items:center; gap:8px; margin-bottom:6px}
+  .prhead b{font-size:13px}
+  .prscore{font-size:16px; font-weight:700; color:var(--accent-dark); font-variant-numeric:tabular-nums}
+  .prmeta{font-size:12px; color:var(--muted); margin:0 0 6px}
+  .prtext{font-size:13px; line-height:2}
+  .pr-word{display:inline-block; padding:0 3px; border-radius:4px; margin:0 1px}
+  .pr-ok{color:#0f7b3d; background:#e9f8ef}
+  .pr-miss{color:#b42318; background:#fdecea; text-decoration:line-through}
+  .pr-extra{color:#a86800; background:#fff5e5}
+  .prhint{font-size:11.5px; color:#8a90a0; margin:8px 0 0; line-height:1.6}
+  .azure-card summary{cursor:pointer; font-size:13px; font-weight:650; color:var(--ink); list-style:none}
+  .azure-card summary::-webkit-details-marker{display:none}
+  .azure-card summary::before{content:"▸"; display:inline-block; width:14px; color:var(--muted)}
+  .azure-card[open] summary::before{content:"▾"}
+  .azure-card .field{margin-top:10px}
+  .azure-card input{
+    width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px;
+    font-family:inherit; font-size:12.5px; color:var(--ink); background:#fff;
+  }
+  .azure-card input:focus{outline:2px solid rgba(37,99,235,.18); border-color:var(--accent)}
+  .azrow{display:flex; align-items:center; gap:8px; margin-top:8px}
+  .azresult{margin-top:10px; border-top:1px dashed var(--line); padding-top:10px}
+  .azscores{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:8px}
+  .azscore{background:#fff; border:1px solid var(--line); border-radius:8px; padding:6px 10px; min-width:86px}
+  .azscore span{display:block; font-size:11px; color:var(--muted)}
+  .azscore b{font-size:16px; font-variant-numeric:tabular-nums}
+  .azwords{line-height:2.1}
+  .azword{display:inline-block; padding:0 3px; border-radius:4px; margin:0 1px}
+  .az-good{color:#0f7b3d; background:#e9f8ef}
+  .az-mid{color:#8a6100; background:#fff5e5}
+  .az-bad{color:#b42318; background:#fdecea}
+  .azdetail{font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.7}
+  .azdetail b{color:var(--ink)}
+  .md p.practice-active, .md li.practice-active, .md blockquote.practice-active{
+    background:#fff8e6; border-radius:6px; box-shadow:0 0 0 4px #fff8e6;
+  }
+  @media (max-width:860px){
+    .layout{grid-template-columns:1fr}
+    .side{order:2}
+    .chat-card{height:auto; max-height:none; min-height:520px}
+    .msgs{min-height:360px; max-height:58vh}
+    .bubble{max-width:86%}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">📚</div>
+    <div>
+      <h1>编程英语</h1>
+      <div class="sub">词汇查询 · 技术例句 · 日常口语练习</div>
+    </div>
+    <div class="grow"></div>
+    <span class="pill" id="modelPill">DeepSeek</span>
+    <button class="ghost" id="btnNew" style="font-family:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer">新对话</button>
+  </header>
+
+  <div class="tabs" id="tabs">
+    <button data-mode="vocab" class="on">🔍 词汇查询</button>
+    <button data-mode="speaking">🗣 口语练习</button>
+  </div>
+
+  <div class="layout">
+    <aside class="side">
+      <div class="card">
+        <h2>练习设置</h2>
+        <div class="field">
+          <label for="level">我的水平</label>
+          <select id="level">
+            <option value="beginner">入门（解释更细）</option>
+            <option value="intermediate">进阶（默认）</option>
+            <option value="advanced">高级（少讲基础）</option>
+          </select>
+        </div>
+        <p class="hint" id="modeTip" style="margin:10px 0 0"></p>
+      </div>
+
+      <details class="card azure-card" id="azureSettings">
+        <summary>发音评分设置（Azure / 讯飞）</summary>
+        <div class="field">
+          <label for="pronProvider">服务</label>
+          <select id="pronProvider">
+            <option value="azure">Azure Pronunciation Assessment</option>
+            <option value="xunfei">讯飞语音评测（每日 500 次免费）</option>
+          </select>
+        </div>
+
+        <div id="azureFields">
+          <div class="field">
+            <label for="azKey">Speech Key</label>
+            <input type="password" id="azKey" placeholder="留空 = 不修改" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="azRegion">Region</label>
+            <input type="text" id="azRegion" placeholder="例如 eastasia" autocomplete="off" />
+          </div>
+        </div>
+
+        <div id="xunfeiFields" style="display:none">
+          <div class="field">
+            <label for="xfAppId">APPID</label>
+            <input type="text" id="xfAppId" placeholder="讯飞控制台的应用 APPID" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="xfApiKey">APIKey</label>
+            <input type="password" id="xfApiKey" placeholder="留空 = 不修改" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="xfApiSecret">APISecret</label>
+            <input type="password" id="xfApiSecret" placeholder="留空 = 不修改" autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="azrow">
+          <button class="mini" id="azSave" type="button">保存</button>
+          <span class="hint" id="azStatus">未配置</span>
+        </div>
+        <p class="hint">讯飞创建应用后默认每日 500 次免费；Azure 可选 F0 免费层。Key 只存在本机 config.json，或改用环境变量。没配置时跟读匹配仍可用。</p>
+      </details>
+
+      <div class="card">
+        <h2>快速开始</h2>
+        <div class="chips" id="chips"></div>
+      </div>
+
+      <div class="card">
+        <h2>怎么用</h2>
+        <p class="hint" id="howto"></p>
+        <p class="hint" id="voiceHint" style="margin:8px 0 0"></p>
+        <p class="hint" style="margin:8px 0 0; color:#8a90a0">内容由已配置的 DeepSeek 生成，仅供学习参考；发音请以音频为准。</p>
+      </div>
+    </aside>
+
+    <main class="chat-card">
+      <div class="chat-head">
+        <b id="chatTitle">词汇查询</b>
+        <span class="hint" id="chatSub"></span>
+        <div class="grow"></div>
+        <span class="pill" id="statusPill">就绪</span>
+      </div>
+      <div class="msgs" id="msgs"></div>
+      <section class="practice-result" id="practiceResult" style="display:none">
+        <div class="prhead">
+          <b>跟读结果</b>
+          <span class="prscore" id="practiceScore"></span>
+          <div class="grow"></div>
+          <button class="mini" id="azureScoreBtn" type="button">🎧 发音评分</button>
+          <button class="mini" id="practiceAgain">再读一遍</button>
+          <button class="mini" id="practiceClose">关闭</button>
+        </div>
+        <p class="prmeta" id="practiceMeta"></p>
+        <div class="prtext" id="practiceDiff"></div>
+        <div class="azresult" id="azureResult" style="display:none"></div>
+        <p class="prhint">这是语音识别匹配度，不是音素级发音评分；读得含糊时 ASR 可能识别成别的词。</p>
+      </section>
+      <div class="composer">
+        <div class="practice-bar" id="practiceBar" style="display:none">
+          <span class="pbar-label">🎯 跟读目标</span>
+          <span class="pbar-text" id="practiceText"></span>
+          <button class="mini" id="practiceSpeak">🔊</button>
+          <button class="mini" id="practiceCancel">取消</button>
+        </div>
+        <textarea id="input" rows="2" placeholder="输入一个编程英语词/短语，或中文想翻成英文…"></textarea>
+        <div class="composer-row">
+          <button class="mic" id="micBtn" type="button" title="语音输入（最长 60 秒）">🎤 语音</button>
+          <button class="mic" id="speakInputBtn" type="button" title="朗读输入框里的英文（美式发音）">🔊 试听</button>
+          <span class="hint" id="micHint">Enter 发送 · Shift+Enter 换行</span>
+          <button class="primary" id="send">发送</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="/static/tools/_shared/readback.js"></script>
+<script>
+'use strict';
+
+const MODE_INFO = {
+  vocab: {
+    title: '词汇查询',
+    sub: '术语释义 · 音标 · 技术例句 · 常见搭配',
+    placeholder: '输入一个编程英语词/短语，或中文想翻成英文…',
+    tip: '查词模式：会按「音标 → 释义 → 技术例句 → 搭配 → 易混 → 记忆」讲解。',
+    howto: '输入单词、短语或一句中文。比如 idempotent、deprecated vs obsolete，或者「这个接口向后兼容旧版本」用英语怎么说。点英文单词或句子后的 🔊 听美式发音；点 🎯 可以把这句设为跟读目标，再点 🎤 语音跟读。'
+  },
+  speaking: {
+    title: '口语练习',
+    sub: '场景示范 · 表达优化 · 发音建议',
+    placeholder: '点一个场景开始，或直接用英语输入…',
+    tip: '口语模式：先看示范表达，再用英语回复；我会先肯定，再指出最值得改的 1-3 处。',
+    howto: '先选一个场景（站会、代码评审、面试、点单…），看 3-5 句示范表达；点句子后的 🔊 听美式发音，点 🎯 设为跟读目标，再点 🎤 语音跟读。'
+  }
+};
+
+const CHIPS = {
+  vocab: [
+    { label: 'idempotent', text: '请解释编程里的 idempotent，给音标、技术例句和常见搭配。' },
+    { label: 'deprecated vs obsolete', text: 'deprecated 和 obsolete 在编程语境里有什么区别？各给一个例句。' },
+    { label: 'race condition', text: 'race condition 是什么意思？给两个技术例句和常见搭配。' },
+    { label: 'LGTM', text: '代码评审里的 LGTM 是什么意思？怎么用？给两个例句。' },
+    { label: '「向后兼容」英文', text: '「这个接口向后兼容旧版本」用英语怎么说？给几种自然说法和语气差别。' }
+  ],
+  speaking: [
+    { label: '每日站会', text: '请模拟「每日站会」场景。先给 3-5 句示范表达和中文解释，然后让我用英语回复。' },
+    { label: '代码评审', text: '请模拟「代码评审」讨论场景。先给示范表达，然后让我练习提一个修改建议。' },
+    { label: '技术面试', text: '请模拟「技术面试自我介绍」场景。先给示范表达，然后让我用英语介绍一个项目。' },
+    { label: '咖啡店点单', text: '请模拟「咖啡店点单」的日常口语场景。先给示范表达，然后让我点一杯咖啡。' },
+    { label: '同事闲聊', text: '请模拟「和同事聊周末」的日常口语场景。先给示范表达，然后让我回答。' }
+  ]
+};
+
+const STORAGE = 'dsh-english-chat-v1';
+const $ = (id) => document.getElementById(id);
+let state = loadState();
+let sending = false;
+let lastError = '';
+let lastFailedText = '';
+let practiceTarget = '';
+let practiceResult = null;
+let practiceBlock = null;
+let lastPracticeAudio = null;
+let azureAssessing = false;
+
+function loadState() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE) || 'null');
+    if (raw && raw.chats && raw.chats.vocab && raw.chats.speaking) {
+      if (!MODE_INFO[raw.mode]) raw.mode = 'vocab';
+      if (!['beginner', 'intermediate', 'advanced'].includes(raw.level)) raw.level = 'intermediate';
+      return raw;
+    }
+  } catch (err) { /* 本地记录坏了就从空对话开始 */ }
+  return { mode: 'vocab', level: 'intermediate', chats: { vocab: [], speaking: [] } };
+}
+
+function saveState() {
+  try { localStorage.setItem(STORAGE, JSON.stringify(state)); } catch (err) { /* 存不了不影响使用 */ }
+}
+
+function escapeHtml(text) {
+  return String(text == null ? '' : text).replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
+function inlineMd(text) {
+  let s = escapeHtml(text);
+  s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+    '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+  return s;
+}
+
+/* 轻量 markdown：标题、列表、引用、代码块、粗体、行内代码、链接。
+   模型被要求不用表格，所以这里不处理表格。 */
+function mdToHtml(markdown) {
+  const lines = String(markdown || '').replace(/\r\n?/g, '\n').split('\n');
+  let out = '';
+  let para = [];
+  let list = null;
+
+  const flushPara = () => {
+    if (para.length) {
+      out += '<p>' + para.map(inlineMd).join('<br>') + '</p>';
+      para = [];
+    }
+  };
+  const closeList = () => {
+    if (list) { out += '</' + list + '>'; list = null; }
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (/^\s*```/.test(line)) {
+      flushPara(); closeList();
+      const code = [];
+      i++;
+      while (i < lines.length && !/^\s*```/.test(lines[i])) { code.push(lines[i]); i++; }
+      out += '<pre><code>' + escapeHtml(code.join('\n')) + '</code></pre>';
+      continue;
+    }
+
+    if (!line.trim()) { flushPara(); closeList(); continue; }
+
+    if (/^\s*(---|\*\*\*)\s*$/.test(line)) { flushPara(); closeList(); out += '<hr>'; continue; }
+
+    const heading = line.match(/^(#{1,4})\s+(.*)$/);
+    if (heading) {
+      flushPara(); closeList();
+      const level = Math.min(4, heading[1].length + 1);
+      out += '<h' + level + '>' + inlineMd(heading[2]) + '</h' + level + '>';
+      continue;
+    }
+
+    const bullet = line.match(/^\s*[-*+]\s+(.*)$/);
+    if (bullet) {
+      flushPara();
+      if (list !== 'ul') { closeList(); out += '<ul>'; list = 'ul'; }
+      out += '<li>' + inlineMd(bullet[1]) + '</li>';
+      continue;
+    }
+
+    const numbered = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (numbered) {
+      flushPara();
+      if (list !== 'ol') { closeList(); out += '<ol>'; list = 'ol'; }
+      out += '<li>' + inlineMd(numbered[1]) + '</li>';
+      continue;
+    }
+
+    const quote = line.match(/^\s*>\s?(.*)$/);
+    if (quote) {
+      flushPara(); closeList();
+      out += '<blockquote>' + inlineMd(quote[1]) + '</blockquote>';
+      continue;
+    }
+
+    para.push(line);
+  }
+
+  flushPara(); closeList();
+  return out;
+}
+
+const synth = ('speechSynthesis' in window) ? window.speechSynthesis : null;
+let speechVoices = [];
+let preferredVoice = null;
+
+function loadVoices() {
+  if (!synth) {
+    if ($('voiceHint')) $('voiceHint').textContent = '当前浏览器不支持语音播放';
+    return;
+  }
+  speechVoices = synth.getVoices() || [];
+  const us = speechVoices.filter((voice) => /^en[-_]US/i.test(voice.lang || ''));
+  preferredVoice = us.find((voice) => /aria|jenny|guy|natural|online/i.test(voice.name || ''))
+    || us[0]
+    || speechVoices.find((voice) => /^en[-_]/i.test(voice.lang || ''))
+    || null;
+  if ($('voiceHint')) {
+    $('voiceHint').textContent = preferredVoice
+      ? '发音：' + preferredVoice.name + '（' + preferredVoice.lang + '）'
+      : '发音：浏览器默认（未找到 en-US 语音，可能不是美式）';
+  }
+}
+
+if (synth) {
+  loadVoices();
+  synth.onvoiceschanged = loadVoices;
+}
+
+/** 去掉中文、IPA 和代码，只留英文，避免朗读时把解释也读出来 */
+function extractEnglish(text) {
+  return String(text || '')
+    .replace(/\/[^\/\n]{2,60}\//g, ' ')
+    .replace(/[\u3400-\u9fff]+/g, ' ')
+    .replace(/[，。；：！？、“”‘’（）【】《》]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function speak(text, rate, element) {
+  const clean = String(text || '').trim();
+  if (!clean) return;
+  if (!synth) {
+    $('micHint').textContent = '当前浏览器不支持语音播放';
+    return;
+  }
+
+  synth.cancel();
+  const utterance = new SpeechSynthesisUtterance(clean);
+  utterance.lang = 'en-US';
+  utterance.rate = rate || 0.95;
+  utterance.pitch = 1;
+  if (preferredVoice) utterance.voice = preferredVoice;
+  if (element) {
+    element.classList.add('speaking');
+    const clear = () => element.classList.remove('speaking');
+    utterance.onend = clear;
+    utterance.onerror = clear;
+  }
+  synth.speak(utterance);
+}
+
+/** 给每个英文段落加 🔊，并把英文单词包成可点击的 span */
+function decorateSpeech() {
+  document.querySelectorAll('#msgs .bubble.md').forEach((bubble) => {
+    bubble.querySelectorAll('p, li, blockquote').forEach((block) => {
+      if (block.querySelector('.say-btn')) return;
+      const clone = block.cloneNode(true);
+      clone.querySelectorAll('pre, .say-btn').forEach((el) => el.remove());
+      const english = extractEnglish(clone.textContent || '');
+      if (!/[A-Za-z]{2}/.test(english)) return;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'say-btn';
+      btn.textContent = '🔊';
+      btn.title = '朗读这句英文（美式发音）';
+      btn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        speak(english, 0.95, btn);
+      });
+
+      const practice = document.createElement('button');
+      practice.type = 'button';
+      practice.className = 'say-btn';
+      practice.textContent = '🎯';
+      practice.title = '跟读这句（读完对比识别结果）';
+      practice.addEventListener('click', (event) => {
+        event.stopPropagation();
+        setPracticeTarget(english, block);
+      });
+
+      block.appendChild(document.createTextNode(' '));
+      block.appendChild(btn);
+      block.appendChild(document.createTextNode(' '));
+      block.appendChild(practice);
+    });
+
+    wrapWords(bubble);
+  });
+}
+
+function wrapWords(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (!node.nodeValue || !/[A-Za-z]/.test(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+      const parent = node.parentElement;
+      if (!parent || parent.closest('pre, code, button, a, .say-btn')) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+
+  nodes.forEach((node) => {
+    const text = node.nodeValue;
+    const fragment = document.createDocumentFragment();
+    const ipaRe = /\/[^\/\n]{2,60}\//g;
+    let last = 0;
+    let match;
+
+    const appendWords = (chunk) => {
+      if (!chunk) return;
+      const wordRe = /[A-Za-z][A-Za-z'’\-]*/g;
+      let start = 0;
+      let word;
+      while ((word = wordRe.exec(chunk))) {
+        if (word.index > start) {
+          fragment.appendChild(document.createTextNode(chunk.slice(start, word.index)));
+        }
+        const span = document.createElement('span');
+        span.className = 'speak-word';
+        const token = word[0];
+        span.textContent = token;
+        span.title = '点击朗读';
+        span.setAttribute('role', 'button');
+        span.tabIndex = 0;
+        span.addEventListener('click', (event) => {
+          event.stopPropagation();
+          speak(token, 0.82, span);
+        });
+        span.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            event.stopPropagation();
+            speak(token, 0.82, span);
+          }
+        });
+        fragment.appendChild(span);
+        start = word.index + word[0].length;
+      }
+      if (start < chunk.length) {
+        fragment.appendChild(document.createTextNode(chunk.slice(start)));
+      }
+    };
+
+    while ((match = ipaRe.exec(text))) {
+      appendWords(text.slice(last, match.index));
+      fragment.appendChild(document.createTextNode(match[0]));
+      last = match.index + match[0].length;
+    }
+    appendWords(text.slice(last));
+
+    if (node.parentNode) node.parentNode.replaceChild(fragment, node);
+  });
+}
+
+function setPracticeTarget(text, block) {
+  if (recording) {
+    $('micHint').textContent = '先停止当前录音，再选跟读句';
+    return;
+  }
+  const target = String(text || '').trim();
+  if (!target) return;
+
+  if (practiceBlock) practiceBlock.classList.remove('practice-active');
+  practiceTarget = target;
+  practiceBlock = block || null;
+  if (practiceBlock) practiceBlock.classList.add('practice-active');
+  practiceResult = null;
+  lastPracticeAudio = null;
+
+  $('practiceText').textContent = target;
+  $('practiceText').title = target;
+  $('practiceBar').style.display = '';
+  $('practiceResult').style.display = 'none';
+  const azureResult = $('azureResult');
+  if (azureResult) { azureResult.style.display = 'none'; azureResult.innerHTML = ''; }
+  $('micHint').textContent = '跟读模式：点 🎤 开始，读完点停止';
+}
+
+function clearPractice() {
+  practiceTarget = '';
+  practiceResult = null;
+  lastPracticeAudio = null;
+  if (practiceBlock) practiceBlock.classList.remove('practice-active');
+  practiceBlock = null;
+  const bar = $('practiceBar');
+  if (bar) bar.style.display = 'none';
+  const panel = $('practiceResult');
+  if (panel) panel.style.display = 'none';
+  const azureResult = $('azureResult');
+  if (azureResult) { azureResult.style.display = 'none'; azureResult.innerHTML = ''; }
+  if ($('micHint')) $('micHint').textContent = DEFAULT_MIC_HINT;
+}
+
+function renderPracticeResult() {
+  const panel = $('practiceResult');
+  if (!panel) return;
+  if (!practiceResult) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  const result = practiceResult;
+  panel.style.display = '';
+  $('practiceScore').textContent = result.score + '%';
+  $('practiceMeta').textContent = '目标 ' + result.targetCount + ' 词，识别出 ' + result.matched + ' 词'
+    + (result.extra.length ? '，多识别 ' + result.extra.length + ' 词' : '');
+
+  const targetHtml = result.target.map((item) =>
+    '<span class="pr-word ' + (item.matched ? 'pr-ok' : 'pr-miss') + '">' + escapeHtml(item.word) + '</span>'
+  ).join(' ');
+  const heardHtml = result.heard.map((item) =>
+    '<span class="pr-word ' + (item.matched ? 'pr-ok' : 'pr-extra') + '">' + escapeHtml(item.word) + '</span>'
+  ).join(' ');
+  $('practiceDiff').innerHTML = '<div><b>目标：</b>' + targetHtml + '</div>'
+    + '<div style="margin-top:4px"><b>识别：</b>'
+    + (heardHtml || '<span class="pr-miss">（没有识别到词）</span>') + '</div>';
+}
+
+function renderAzureResult(data) {
+  const box = $('azureResult');
+  if (!box) return;
+
+  const scores = (data && data.scores) || {};
+  const service = data.provider === 'xunfei' ? '讯飞语音评测' : 'Azure Pronunciation Assessment';
+  const labels = [
+    ['发音', 'pronunciation'], ['准确度', 'accuracy'],
+    ['流利度', 'fluency'], ['完整度', 'completeness'],
+    ['标准度', 'standard'], ['韵律', 'prosody']
+  ];
+  const cards = labels.filter(([, key]) => scores[key] != null).map(([label, key]) =>
+    '<div class="azscore"><span>' + label + '</span><b>' + scores[key] + '</b></div>'
+  ).join('');
+
+  const words = (data.words || []).map((item) => {
+    const accuracy = item.accuracy == null ? 0 : item.accuracy;
+    const cls = item.accuracy == null ? 'az-mid'
+      : (accuracy >= 80 ? 'az-good' : (accuracy >= 60 ? 'az-mid' : 'az-bad'));
+    const title = item.word + '：' + (item.accuracy == null ? '无分数' : item.accuracy)
+      + (item.error_type ? ' · ' + item.error_type : '');
+    return '<span class="azword ' + cls + '" title="' + escapeHtml(title) + '">'
+      + escapeHtml(item.word) + '</span>';
+  }).join(' ');
+
+  const low = (data.words || []).filter((item) => item.accuracy != null && item.accuracy < 80)
+    .slice(0, 10)
+    .map((item) => {
+      const phones = (item.phonemes || []).filter((p) => p.accuracy != null || p.error)
+        .map((p) => p.phoneme + (p.accuracy != null ? ' ' + p.accuracy : (p.error ? ' (' + p.error + ')' : '')))
+        .join(' · ');
+      return '<div class="azdetail"><b>' + escapeHtml(item.word) + '</b> ' + item.accuracy
+        + (item.error_type ? ' · ' + escapeHtml(item.error_type) : '')
+        + (phones ? ' · 音素：' + escapeHtml(phones) : '') + '</div>';
+    }).join('');
+
+  box.innerHTML = (cards ? '<div class="azscores">' + cards + '</div>' : '')
+    + '<div class="azwords">' + (words || '<span class="hint">' + service + ' 没有返回词级分数</span>') + '</div>'
+    + (data.display_text ? '<div class="azdetail">' + service + ' 识别：' + escapeHtml(data.display_text) + '</div>' : '')
+    + (low ? '<div style="margin-top:6px">' + low + '</div>' : '')
+    + '<p class="prhint">分数由 ' + service + ' 给出（0-100）；'
+    + (data.provider === 'xunfei'
+      ? '会消耗讯飞免费额度/套餐次数。'
+      : '会产生 Azure 费用。') + '</p>';
+  box.style.display = '';
+}
+
+async function assessPronunciation() {
+  if (!practiceTarget) {
+    $('micHint').textContent = '先点 🎯 选一句跟读目标';
+    return;
+  }
+  if (!lastPracticeAudio) {
+    $('micHint').textContent = '先录一遍跟读音频';
+    return;
+  }
+  if (azureAssessing) return;
+
+  const box = $('azureResult');
+  azureAssessing = true;
+  $('azureScoreBtn').disabled = true;
+  $('azureScoreBtn').textContent = '…评分中';
+  box.style.display = '';
+  box.innerHTML = '<div class="loading">正在请求发音评测</div>';
+
+  try {
+    const response = await fetch('/api/english/pronounce', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        audio: lastPracticeAudio.audio,
+        mime: lastPracticeAudio.mime,
+        target: practiceTarget
+      })
+    });
+    let data = {};
+    try { data = await response.json(); } catch (err) { /* 统一处理 */ }
+    if (!response.ok) {
+      throw new Error((data && data.detail) || ('发音评测失败（HTTP ' + response.status + '）'));
+    }
+    if (!data.ok) throw new Error((data && data.error) || '发音评测没有返回结果');
+    renderAzureResult(data);
+  } catch (err) {
+    box.innerHTML = '<div class="err" style="white-space:pre-wrap">'
+      + escapeHtml(err && err.message ? err.message : String(err)) + '</div>';
+  } finally {
+    azureAssessing = false;
+    $('azureScoreBtn').disabled = false;
+    $('azureScoreBtn').textContent = '🎧 发音评分';
+  }
+}
+
+function updateProviderFields() {
+  const provider = $('pronProvider').value;
+  $('azureFields').style.display = provider === 'azure' ? '' : 'none';
+  $('xunfeiFields').style.display = provider === 'xunfei' ? '' : 'none';
+}
+
+async function loadAzureSettings() {
+  try {
+    const response = await fetch('/api/config');
+    const data = await response.json();
+    const pron = (data.config && data.config.pronunciation) || {};
+    const provider = pron.provider === 'xunfei' ? 'xunfei' : 'azure';
+    const azure = pron.azure || {};
+    const xunfei = pron.xunfei || {};
+
+    $('pronProvider').value = provider;
+    updateProviderFields();
+    $('azRegion').value = azure.region || '';
+    $('xfAppId').value = xunfei.app_id || '';
+
+    if (provider === 'xunfei') {
+      const hasApp = !!xunfei.app_id || !!xunfei.env_app_id_set;
+      const hasKey = !!xunfei.api_key_set || !!xunfei.env_api_key_set;
+      const hasSecret = !!xunfei.api_secret_set || !!xunfei.env_api_secret_set;
+      const configured = hasApp && hasKey && hasSecret;
+      const envOnly = xunfei.env_key_set && !xunfei.api_key_set && !xunfei.api_secret_set;
+      $('xfAppId').placeholder = xunfei.app_id
+        ? '已配置，可修改' : '讯飞控制台的应用 APPID';
+      $('xfApiKey').placeholder = xunfei.api_key_set
+        ? '已配置，留空不修改' : (xunfei.env_api_key_set ? '已通过环境变量配置' : '留空 = 不修改');
+      $('xfApiSecret').placeholder = xunfei.api_secret_set
+        ? '已配置，留空不修改' : (xunfei.env_api_secret_set ? '已通过环境变量配置' : '留空 = 不修改');
+      if (envOnly) {
+        $('azStatus').textContent = '讯飞已通过环境变量配置';
+      } else {
+        $('azStatus').textContent = configured ? '讯飞已配置' : '讯飞未配置';
+      }
+      if (configured && !hasApp) $('azStatus').textContent += '（还缺 APPID）';
+      return;
+    }
+
+    const configured = !!(azure.key_set || azure.env_key_set);
+    if (azure.env_key_set && !azure.key_set) {
+      $('azKey').placeholder = '已通过环境变量配置，可留空';
+      $('azStatus').textContent = 'Azure 已通过环境变量配置';
+    } else if (azure.key_set) {
+      $('azKey').placeholder = '已配置，留空不修改';
+      $('azStatus').textContent = 'Azure 已配置';
+    } else {
+      $('azKey').placeholder = '粘贴 Azure Speech Key';
+      $('azStatus').textContent = 'Azure 未配置';
+    }
+    if (!azure.region && configured) {
+      $('azStatus').textContent += '（还缺 region）';
+    }
+  } catch (err) {
+    $('azStatus').textContent = '配置读取失败';
+  }
+}
+
+async function saveAzureSettings() {
+  const provider = $('pronProvider').value;
+  const patch = { pronunciation: { provider } };
+  $('azSave').disabled = true;
+  $('azStatus').textContent = '保存中…';
+
+  try {
+    if (provider === 'azure') {
+      const region = $('azRegion').value.trim();
+      if (!region) {
+        $('azStatus').textContent = '请填 Azure region';
+        return;
+      }
+      patch.pronunciation.azure = { region };
+      const key = $('azKey').value.trim();
+      if (key) patch.pronunciation.azure.key = key;
+    } else {
+      patch.pronunciation.xunfei = {};
+      const appId = $('xfAppId').value.trim();
+      const apiKey = $('xfApiKey').value.trim();
+      const apiSecret = $('xfApiSecret').value.trim();
+      if (appId) patch.pronunciation.xunfei.app_id = appId;
+      if (apiKey) patch.pronunciation.xunfei.api_key = apiKey;
+      if (apiSecret) patch.pronunciation.xunfei.api_secret = apiSecret;
+      if (!appId && !apiKey && !apiSecret && !$('azStatus').textContent.includes('已')) {
+        $('azStatus').textContent = '先填讯飞的 APPID / APIKey / APISecret';
+        return;
+      }
+    }
+
+    const response = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch)
+    });
+    let data = {};
+    try { data = await response.json(); } catch (err) { /* 统一处理 */ }
+    if (!response.ok) throw new Error((data && data.detail) || ('保存失败（HTTP ' + response.status + '）'));
+    $('azKey').value = '';
+    $('xfApiKey').value = '';
+    $('xfApiSecret').value = '';
+    await loadAzureSettings();
+    $('azStatus').textContent = '已保存';
+  } catch (err) {
+    $('azStatus').textContent = '保存失败：' + (err && err.message ? err.message : String(err));
+  } finally {
+    $('azSave').disabled = false;
+  }
+}
+
+function emptyHtml() {
+  const info = MODE_INFO[state.mode];
+  const chips = CHIPS[state.mode].slice(0, 3).map((chip, index) =>
+    '<button class="chip" data-chip="' + index + '">' + escapeHtml(chip.label) + '</button>'
+  ).join('');
+  return '<div class="empty"><div class="big">' + (state.mode === 'vocab' ? '🔍' : '🗣️') + '</div>'
+    + '<h3>' + (state.mode === 'vocab' ? '查一个词，顺便记住它怎么用' : '选一个场景，开口练两句') + '</h3>'
+    + '<p>' + escapeHtml(info.tip) + '</p><div class="chips">' + chips + '</div></div>';
+}
+
+function renderMessages() {
+  const chat = state.chats[state.mode];
+  let html = '';
+
+  if (!chat.length) {
+    html = emptyHtml();
+  } else {
+    html = chat.map((msg) => {
+      if (msg.role === 'user') {
+        return '<div class="msg user"><div class="avatar">你</div>'
+          + '<div class="bubble">' + escapeHtml(msg.content).replace(/\n/g, '<br>') + '</div></div>';
+      }
+      return '<div class="msg assistant"><div class="avatar">AI</div>'
+        + '<div class="bubble md">' + mdToHtml(msg.content) + '</div></div>';
+    }).join('');
+  }
+
+  if (sending) {
+    html += '<div class="msg assistant"><div class="avatar">AI</div>'
+      + '<div class="bubble"><span class="typing"><i></i><i></i><i></i></span></div></div>';
+  } else if (lastError) {
+    html += '<div class="msg assistant"><div class="avatar">!</div><div class="bubble err">'
+      + escapeHtml(lastError)
+      + (lastFailedText ? '<div style="margin-top:8px"><button class="chip" id="retryBtn">重试</button></div>' : '')
+      + '</div></div>';
+  }
+
+  $('msgs').innerHTML = html;
+  const retry = $('retryBtn');
+  if (retry) retry.onclick = () => sendMessage(lastFailedText, { retry: true });
+  decorateSpeech();
+  const box = $('msgs');
+  box.scrollTop = box.scrollHeight;
+}
+
+function render() {
+  const info = MODE_INFO[state.mode];
+  document.querySelectorAll('#tabs button').forEach((btn) => {
+    btn.classList.toggle('on', btn.getAttribute('data-mode') === state.mode);
+  });
+  $('level').value = state.level;
+  $('chatTitle').textContent = info.title;
+  $('chatSub').textContent = info.sub;
+  $('input').placeholder = info.placeholder;
+  $('modeTip').textContent = info.tip;
+  $('howto').textContent = info.howto;
+  $('chips').innerHTML = CHIPS[state.mode].map((chip, index) =>
+    '<button class="chip" data-chip="' + index + '">' + escapeHtml(chip.label) + '</button>'
+  ).join('');
+  $('statusPill').textContent = sending ? '思考中…' : '就绪';
+  $('statusPill').className = 'pill ' + (sending ? 'busy' : 'ok');
+  $('send').disabled = sending;
+  renderMessages();
+}
+
+async function sendMessage(text, options) {
+  const opts = options || {};
+  const content = String(text || '').trim();
+  if (!content || sending) return;
+
+  const mode = state.mode;
+  const chat = state.chats[mode];
+  if (!opts.retry) {
+    chat.push({ role: 'user', content });
+    if (chat.length > 40) state.chats[mode] = chat.slice(-40);
+    saveState();
+    $('input').value = '';
+  }
+
+  lastError = '';
+  lastFailedText = '';
+  sending = true;
+  render();
+
+  const context = chat.slice(-20);
+  try {
+    const response = await fetch('/api/english/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: context, mode, level: state.level })
+    });
+    let data = {};
+    try { data = await response.json(); } catch (err) { /* 非 JSON 错误下面统一处理 */ }
+    if (!response.ok) {
+      throw new Error((data && data.detail) || ('请求失败（HTTP ' + response.status + '）'));
+    }
+    if (!data.ok || !data.reply) {
+      throw new Error((data && data.error) || '助手没有返回内容，请再试一次');
+    }
+
+    state.chats[mode].push({ role: 'assistant', content: data.reply });
+    if (state.chats[mode].length > 40) state.chats[mode] = state.chats[mode].slice(-40);
+    if (data.model) {
+      const label = String(data.model).split('/')[0].trim();
+      $('modelPill').textContent = label || 'AI';
+      $('modelPill').title = data.model;
+    }
+    saveState();
+  } catch (err) {
+    lastError = (err && err.message) ? err.message : String(err);
+    lastFailedText = content;
+  } finally {
+    sending = false;
+    render();
+    $('input').focus();
+  }
+}
+
+/* ------------------------------ 语音输入 ------------------------------ */
+const DEFAULT_MIC_HINT = 'Enter 发送 · Shift+Enter 换行';
+let mediaRecorder = null;
+let recordStream = null;
+let recordChunks = [];
+let recordTimer = null;
+let recording = false;
+let transcribing = false;
+
+function resetMic(message) {
+  recording = false;
+  transcribing = false;
+  clearTimeout(recordTimer);
+  recordTimer = null;
+  $('micBtn').disabled = false;
+  $('micBtn').classList.remove('rec');
+  $('micBtn').textContent = '🎤 语音';
+  $('micHint').textContent = message || DEFAULT_MIC_HINT;
+}
+
+function stopStream() {
+  if (recordStream) {
+    recordStream.getTracks().forEach((track) => track.stop());
+    recordStream = null;
+  }
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+    reader.onerror = () => reject(new Error('读取录音失败'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function startRecording() {
+  if (recording || transcribing) return;
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
+    $('micHint').textContent = '当前浏览器不支持录音，请用 Edge / Chrome 打开';
+    return;
+  }
+
+  $('micBtn').disabled = true;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordStream = stream;
+    recordChunks = [];
+    const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+    const mimeType = types.find((type) => window.MediaRecorder.isTypeSupported(type)) || '';
+    mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data && event.data.size) recordChunks.push(event.data);
+    };
+    mediaRecorder.onstop = handleRecordingStop;
+    mediaRecorder.onerror = () => {
+      stopStream();
+      resetMic('录音出错，请重试');
+    };
+    mediaRecorder.start();
+
+    recording = true;
+    $('micBtn').disabled = false;
+    $('micBtn').classList.add('rec');
+    $('micBtn').textContent = '■ 停止';
+    $('micHint').textContent = '正在录音… 说完点「停止」（最长 60 秒）';
+    recordTimer = setTimeout(stopRecording, 60000);
+  } catch (err) {
+    stopStream();
+    resetMic('无法使用麦克风：' + (err && err.message ? err.message : '请检查浏览器权限'));
+  }
+}
+
+function stopRecording() {
+  if (!recording) return;
+  recording = false;
+  clearTimeout(recordTimer);
+  recordTimer = null;
+  $('micBtn').disabled = true;
+  $('micBtn').textContent = '… 识别中';
+  $('micHint').textContent = '正在识别语音…';
+  try {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    else handleRecordingStop();
+  } catch (err) {
+    resetMic('录音停止失败，请重试');
+  }
+}
+
+async function handleRecordingStop() {
+  stopStream();
+  if (transcribing) return;
+
+  const blob = new Blob(recordChunks, { type: (recordChunks[0] && recordChunks[0].type) || 'audio/webm' });
+  recordChunks = [];
+  if (blob.size < 800) {
+    resetMic('录音太短，请说完一句话再停止');
+    return;
+  }
+
+  transcribing = true;
+  try {
+    const audio = await blobToBase64(blob);
+    if (practiceTarget) lastPracticeAudio = { audio, mime: blob.type };
+    const azureBox = $('azureResult');
+    if (azureBox) { azureBox.style.display = 'none'; azureBox.innerHTML = ''; }
+    const response = await fetch('/api/english/transcribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audio, mime: blob.type })
+    });
+    let data = {};
+    try { data = await response.json(); } catch (err) { /* 统一处理 */ }
+    if (!response.ok) {
+      throw new Error((data && data.detail) || ('语音识别失败（HTTP ' + response.status + '）'));
+    }
+    if (!data.ok || !data.text) {
+      throw new Error((data && data.error) || '没有识别到语音');
+    }
+
+    const input = $('input');
+    input.value = (input.value.trim() ? input.value.trim() + ' ' : '') + data.text;
+    input.focus();
+
+    if (practiceTarget && window.DSH_READBACK) {
+      practiceResult = window.DSH_READBACK.compare(practiceTarget, data.text);
+      practiceResult.transcript = data.text;
+      renderPracticeResult();
+      $('practiceResult').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      resetMic('跟读完成，看下方匹配结果');
+    } else {
+      resetMic('已识别，可修改后发送');
+      setTimeout(() => {
+        if (!recording && !transcribing && $('micHint').textContent === '已识别，可修改后发送') {
+          $('micHint').textContent = DEFAULT_MIC_HINT;
+        }
+      }, 4000);
+    }
+  } catch (err) {
+    resetMic('语音识别失败：' + (err && err.message ? err.message : String(err)));
+  } finally {
+    transcribing = false;
+  }
+}
+
+$('micBtn').addEventListener('click', () => {
+  if (recording) stopRecording();
+  else startRecording();
+});
+
+$('speakInputBtn').addEventListener('click', () => {
+  const english = extractEnglish($('input').value);
+  if (!english) {
+    $('micHint').textContent = '输入框里没有英文可朗读';
+    return;
+  }
+  speak(english, 0.95, $('speakInputBtn'));
+});
+
+$('practiceCancel').addEventListener('click', clearPractice);
+$('practiceClose').addEventListener('click', clearPractice);
+$('practiceSpeak').addEventListener('click', () => {
+  if (practiceTarget) speak(practiceTarget, 0.95, $('practiceSpeak'));
+});
+$('practiceAgain').addEventListener('click', () => {
+  if (!practiceTarget) return;
+  practiceResult = null;
+  lastPracticeAudio = null;
+  const azureBox = $('azureResult');
+  if (azureBox) { azureBox.style.display = 'none'; azureBox.innerHTML = ''; }
+  renderPracticeResult();
+  startRecording();
+});
+
+$('azureScoreBtn').addEventListener('click', assessPronunciation);
+$('azSave').addEventListener('click', saveAzureSettings);
+$('pronProvider').addEventListener('change', () => {
+  updateProviderFields();
+  $('azStatus').textContent = '点「保存」切换服务';
+});
+
+$('tabs').addEventListener('click', (event) => {
+  const btn = event.target.closest('button[data-mode]');
+  if (!btn) return;
+  state.mode = btn.getAttribute('data-mode');
+  lastError = '';
+  lastFailedText = '';
+  clearPractice();
+  saveState();
+  render();
+  $('input').focus();
+});
+
+document.addEventListener('click', (event) => {
+  const chip = event.target.closest('[data-chip]');
+  if (!chip) return;
+  const index = Number(chip.getAttribute('data-chip'));
+  const item = CHIPS[state.mode][index];
+  if (item) sendMessage(item.text);
+});
+
+$('level').addEventListener('change', () => {
+  state.level = $('level').value;
+  saveState();
+  render();
+});
+
+$('send').addEventListener('click', () => sendMessage($('input').value));
+
+$('input').addEventListener('keydown', (event) => {
+  if (event.isComposing) return;
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendMessage($('input').value);
+  }
+});
+
+$('btnNew').addEventListener('click', () => {
+  const chat = state.chats[state.mode];
+  if (chat.length && !confirm('清空当前对话？')) return;
+  state.chats[state.mode] = [];
+  lastError = '';
+  lastFailedText = '';
+  clearPractice();
+  saveState();
+  render();
+  $('input').focus();
+});
+
+/* 显示当前实际使用的模型（只显示厂商，不显示 key） */
+fetch('/api/config').then((r) => r.json()).then((data) => {
+  const provider = data && data.config && data.config.summarizer && data.config.summarizer.provider;
+  const preset = provider && data.summarizer_presets && data.summarizer_presets[provider];
+  if (preset && preset.label) {
+    $('modelPill').textContent = preset.label;
+    $('modelPill').title = preset.label + ' / ' + (preset.model || '');
+  }
+}).catch(() => { /* 展示默认标签即可 */ });
+
+render();
+loadAzureSettings();
+$('input').focus();
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "多语言关键字",
+  "description": "Python / C++ / Java / 前端 / MySQL / Go 关键字速查 + AI 解释 + Python API 示例",
+  "icon": "🔎",
+  "order": 40
+}

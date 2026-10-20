@@ -1,0 +1,13 @@
+# 本项目的依赖由 bootstrap_deps.py 下载到项目内的 _vendor/ 目录，
+# 不依赖 pip 安装到这个解释器的 site-packages。
+# 这个文件只用于说明版本，或者在其它机器上用常规 pip 安装时参考。
+#
+# 常规安装方式（在 pip 可用的机器上）：
+#     python -m pip install -r requirements.txt
+
+yt-dlp==2026.8.19
+imageio-ffmpeg>=0.6.0
+requests>=2.32.0
+websocket-client>=1.8.0
+fastapi>=0.110
+uvicorn>=0.27

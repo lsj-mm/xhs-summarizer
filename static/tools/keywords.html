@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>多语言关键字</title>
+<link rel="stylesheet" href="/static/tools/_shared/base.css" />
+<style>
+  .wrap{max-width:1100px; margin:0 auto; padding:24px 20px 56px}
+  header.top{display:flex; align-items:center; gap:12px; margin-bottom:16px}
+  header.top .logo{
+    width:38px;height:38px;border-radius:11px;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:19px;flex:0 0 auto;
+  }
+  header.top h1{font-size:18px;margin:0;font-weight:650}
+  header.top .sub{color:var(--muted);font-size:12.5px}
+  .grow{flex:1}
+  .hero{padding:18px}
+  .searchrow{display:flex; gap:10px; align-items:center}
+  .searchrow input{
+    flex:1; min-width:0; padding:11px 14px; border:1px solid var(--line); border-radius:10px;
+    font-family:inherit; font-size:14.5px; background:#fcfcfd; color:var(--ink);
+  }
+  .searchrow input:focus{outline:2px solid rgba(37,99,235,.18); border-color:var(--accent)}
+  button.primary{
+    font-family:inherit; font-size:13.5px; font-weight:550; padding:10px 20px; border-radius:9px;
+    border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer; white-space:nowrap;
+  }
+  button.primary:hover{background:var(--accent-dark)}
+  button.primary:disabled{opacity:.55; cursor:not-allowed}
+  .langchips{display:flex; flex-wrap:wrap; gap:6px; margin-top:12px}
+  .langchip{
+    font-family:inherit; font-size:12.5px; padding:6px 10px; border-radius:8px;
+    border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer;
+  }
+  .langchip span{color:var(--muted); font-size:11.5px; margin-left:4px}
+  .langchip:hover{background:#f3f6fb}
+  .langchip.on{background:var(--accent-soft); border-color:#cfe0ff; color:var(--accent-dark); font-weight:600}
+  .hot{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:10px; font-size:12px; color:var(--muted)}
+  .hot button{
+    font-family:inherit; font-size:12px; padding:3px 8px; border-radius:999px; border:1px dashed var(--line);
+    background:#fff; color:var(--muted); cursor:pointer;
+  }
+  .hot button:hover{color:var(--accent-dark); border-color:#cfe0ff}
+  .resultbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:18px 0 10px; min-height:30px}
+  .resultbar .hint{font-size:12.5px; color:var(--muted)}
+  .resultbar b{color:var(--ink)}
+  .mini{
+    font-family:inherit; font-size:12px; padding:4px 9px; border-radius:7px; border:1px solid var(--line);
+    background:#fff; color:var(--muted); cursor:pointer;
+  }
+  .mini:hover{background:#f3f4f6; color:var(--ink)}
+  .langgrid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px}
+  .langtile{
+    text-align:left; font-family:inherit; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:14px; cursor:pointer; box-shadow:var(--shadow);
+  }
+  .langtile:hover{border-color:#cfe0ff; background:#fbfdff}
+  .tilehead{display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--muted)}
+  .tilehead b{color:var(--ink)}
+  .tileex{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.6; word-break:break-word}
+  .kcard{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow);
+    padding:16px 17px; margin-bottom:14px;
+  }
+  .khead{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+  .khead h3{font-size:16px; margin:0; font-weight:650}
+  .badge{
+    display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px;
+    font-size:11.5px; font-weight:650; color:#fff; white-space:nowrap;
+  }
+  .lang-python{background:#3572A5}
+  .lang-cpp{background:#b13a5b}
+  .lang-java{background:#b07219}
+  .lang-frontend{background:#9a8b00}
+  .lang-mysql{background:#00758f}
+  .lang-go{background:#00a6c9}
+  .cat{font-size:11.5px; color:var(--muted); background:#f1f2f5; padding:2px 8px; border-radius:999px}
+  .sum{font-size:13.5px; margin:10px 0 9px; line-height:1.7}
+  .kcode{
+    margin:0 0 10px; padding:12px 13px; background:#1c1f26; color:#e6e9ef; border-radius:9px;
+    overflow:auto; max-height:300px; font-size:12.5px; line-height:1.65;
+    font-family:"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  .kcode code{white-space:pre; font-family:inherit}
+  .note{font-size:12.5px; color:var(--muted); line-height:1.7; margin:0 0 9px}
+  .doc{font-size:12.5px; color:var(--accent-dark); text-decoration:none}
+  .doc:hover{text-decoration:underline}
+  .empty{
+    background:var(--panel); border:1px dashed #cfd6e2; border-radius:12px; padding:32px 20px;
+    text-align:center; color:var(--muted);
+  }
+  .empty .big{font-size:32px; margin-bottom:6px}
+  .empty h3{margin:0 0 6px; color:var(--ink); font-size:15px}
+  .empty p{margin:0 0 14px; font-size:12.5px}
+  .ai{margin:0 0 16px; border-left:3px solid var(--accent); padding:16px 18px}
+  .aihead{display:flex; align-items:center; gap:10px; margin-bottom:10px}
+  .aihead h2{font-size:14px; margin:0; font-weight:650}
+  .aihead .pill{margin-left:auto}
+  .loading{color:var(--muted); font-size:13px; padding:6px 0}
+  .loading::after{content:"…"; animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .err{color:var(--err); font-size:13px; line-height:1.7; white-space:pre-wrap}
+  .md{font-size:13.5px; line-height:1.75}
+  .md p{margin:0 0 8px}
+  .md h2,.md h3,.md h4{margin:12px 0 6px; line-height:1.4}
+  .md h2{font-size:15px} .md h3{font-size:14px} .md h4{font-size:13.5px}
+  .md ul,.md ol{margin:4px 0 9px; padding-left:20px}
+  .md code{background:#f0f2f6; padding:1px 5px; border-radius:5px; font-family:Consolas,monospace; font-size:12.5px}
+  .md pre{background:#1c1f26; color:#e6e9ef; padding:11px 12px; border-radius:9px; overflow:auto;
+    margin:7px 0 9px; font-size:12.5px; line-height:1.6}
+  .md pre code{background:none; padding:0; color:inherit}
+  .md blockquote{border-left:3px solid #cfe0ff; margin:7px 0; padding:1px 10px; color:#4b5563}
+  .md a{color:var(--accent-dark)}
+  .refs h2{font-size:14px; margin:22px 0 10px; color:var(--muted)}
+  .refgrid{display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start}
+  .ref{padding:0; overflow:hidden; margin-bottom:0}
+  .ref summary{cursor:pointer; padding:13px 16px; font-size:13.5px; font-weight:650; background:#fff}
+  .ref summary:hover{background:#fafbfc}
+  .ref .refbody{padding:0 16px 15px}
+  .ref .refbody p{font-size:12.5px; color:var(--muted); line-height:1.7}
+  .codeblock{
+    margin:8px 0 10px; padding:11px 12px; background:#1c1f26; color:#e6e9ef; border-radius:9px;
+    overflow:auto; max-height:320px; font-size:12px; line-height:1.6;
+    font-family:"Cascadia Mono",Consolas,"Courier New",monospace; white-space:pre;
+  }
+  .demorow{display:flex; gap:8px; margin:10px 0}
+  .demorow input{
+    flex:1; min-width:0; padding:8px 10px; border:1px solid var(--line); border-radius:8px;
+    font-family:inherit; font-size:12.5px;
+  }
+  .repo{border-bottom:1px dashed var(--line); padding:9px 0; font-size:12.5px}
+  .repo:last-child{border-bottom:0}
+  .repo .rhead{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+  .repo .rhead a{color:var(--accent-dark); font-weight:600; text-decoration:none; word-break:break-all}
+  .repo .stars{color:#a86800; font-size:11.5px}
+  .repo p{margin:4px 0 0; color:var(--muted); line-height:1.6}
+  .toast{
+    position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(16px); opacity:0;
+    background:#1c1f26; color:#fff; padding:9px 16px; border-radius:9px; font-size:12.5px;
+    transition:.2s; z-index:99; pointer-events:none;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  @media (max-width:900px){
+    .langgrid{grid-template-columns:1fr 1fr}
+    .refgrid{grid-template-columns:1fr}
+  }
+  @media (max-width:620px){
+    .langgrid{grid-template-columns:1fr}
+    .searchrow{flex-direction:column; align-items:stretch}
+    .searchrow button.primary{width:100%}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">🔎</div>
+    <div>
+      <h1>多语言关键字</h1>
+      <div class="sub">Python · C++ · Java · 前端 · MySQL · Go — 关键字速查 + AI 补充</div>
+    </div>
+    <div class="grow"></div>
+    <span class="pill" id="countPill">加载中…</span>
+  </header>
+
+  <section class="card hero">
+    <div class="searchrow">
+      <input id="q" type="search" placeholder="输入关键字，如 yield、RAII、event loop、FULLTEXT、goroutine…" autocomplete="off" />
+      <button class="primary" id="searchBtn">搜索</button>
+    </div>
+    <div class="langchips" id="langchips"></div>
+    <div class="hot" id="hot"></div>
+  </section>
+
+  <div class="resultbar" id="resultbar"></div>
+  <section class="card ai" id="aiCard" style="display:none">
+    <div class="aihead">
+      <h2 id="aiTitle">AI 补充解释</h2>
+      <span class="pill" id="aiModel"></span>
+    </div>
+    <div id="aiBody"></div>
+  </section>
+  <div id="results"></div>
+
+  <section class="refs">
+    <h2>开发参考</h2>
+    <div class="refgrid">
+      <details class="card ref" open>
+        <summary>Python 调用第三方 API（以 GitHub 为例）</summary>
+        <div class="refbody">
+          <p>先查文档确认接口地址、参数、鉴权方式和返回结构，再用 <code>requests</code> 发请求；
+            用 <code>raise_for_status()</code> 检查 HTTP 状态，最后按 JSON 字段解析。</p>
+          <pre class="codeblock">import requests
+
+resp = requests.get(
+    "https://api.github.com/search/repositories",
+    params={"q": "keyword", "sort": "stars", "per_page": 5},
+    headers={"Accept": "application/vnd.github+json"},
+    timeout=15,
+)
+resp.raise_for_status()
+for repo in resp.json()["items"]:
+    print(repo["full_name"], repo["stargazers_count"])</pre>
+          <p><a class="doc" href="https://docs.github.com/en/rest/search/search#search-repositories" target="_blank" rel="noreferrer">GitHub Search API 文档 ↗</a></p>
+          <div class="demorow">
+            <input id="ghQ" type="search" placeholder="输入仓库关键字，如 python" value="python" />
+            <button class="mini" id="ghBtn">试调 API</button>
+          </div>
+          <div id="ghOut"></div>
+          <p style="font-size:11.5px; margin-top:6px">这是真实的 GitHub 请求；未认证时搜索接口约 10 次/分钟。</p>
+        </div>
+      </details>
+
+      <details class="card ref" open>
+        <summary>MySQL 关键字查询</summary>
+        <div class="refbody">
+          <p>小表用 <code>LIKE</code> 快速实现；大表用 <code>FULLTEXT</code>（中文加 ngram 解析器），
+            并用 <code>EXPLAIN</code> 确认是否走索引。</p>
+          <pre class="codeblock">-- 1) 包含匹配（注意前置 % 会让普通索引失效）
+SELECT id, title
+FROM articles
+WHERE title LIKE CONCAT('%', ?, '%')
+   OR body  LIKE CONCAT('%', ?, '%')
+LIMIT 50;
+
+-- 2) 全文索引 + 相关性排序
+ALTER TABLE articles
+  ADD FULLTEXT INDEX ft_articles (title, body);
+
+SELECT id, title,
+       MATCH(title, body) AGAINST (? IN NATURAL LANGUAGE MODE) AS score
+FROM articles
+WHERE MATCH(title, body) AGAINST (? IN NATURAL LANGUAGE MODE)
+ORDER BY score DESC
+LIMIT 50;
+
+-- 3) 看执行计划
+EXPLAIN ANALYZE SELECT id, title FROM articles
+WHERE title LIKE '%mysql%' LIMIT 50;</pre>
+          <p>中文全文检索用 <code>WITH PARSER ngram</code>；参数一律用占位符，不要拼接 SQL。</p>
+        </div>
+      </details>
+
+      <details class="card ref" open>
+        <summary>前端如何接查询接口</summary>
+        <div class="refbody">
+          <p>输入用防抖，请求用 <code>AbortController</code> 取消上一次；返回后先检查
+            <code>res.ok</code>，再渲染并处理空结果/错误。</p>
+          <pre class="codeblock">let timer;
+let controller;
+
+function onInput(q) {
+  clearTimeout(timer);
+  timer = setTimeout(() => search(q), 200);
+}
+
+async function search(q) {
+  if (controller) controller.abort();
+  controller = new AbortController();
+  const res = await fetch(
+    "/api/search?q=" + encodeURIComponent(q),
+    { signal: controller.signal }
+  );
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const data = await res.json();
+  render(data.items);
+}</pre>
+        </div>
+      </details>
+
+      <details class="card ref" open>
+        <summary>C++ / Java / Go 的检索思路</summary>
+        <div class="refbody">
+          <p>C++：<code>std::string::find</code> / <code>std::regex</code>，大文本先建倒排或前缀树。</p>
+          <p>Java：<code>String.contains</code> / <code>Pattern</code>，服务端可用 Lucene/Elasticsearch。</p>
+          <p>Go：<code>strings.Contains</code> / <code>regexp</code>，并发检索用 goroutine + channel 汇总。</p>
+          <pre class="codeblock">// Go：并发检索多个分片，合并命中结果
+func search(shards []string, kw string) []string {
+    ch := make(chan []string, len(shards))
+    for _, s := range shards {
+        go func(s string) {
+            var hits []string
+            if strings.Contains(s, kw) {
+                hits = append(hits, s)
+            }
+            ch <- hits
+        }(s)
+    }
+    var out []string
+    for range shards {
+        out = append(out, <-ch...)
+    }
+    return out
+}</pre>
+        </div>
+      </details>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/static/tools/_shared/markdown.js"></script>
+<script src="/static/tools/_shared/keywords-data.js"></script>
+<script>
+'use strict';
+
+const DATA = window.KEYWORD_DATA || [];
+const LANGS = [
+  { id: 'all', name: '全部' },
+  { id: 'python', name: 'Python' },
+  { id: 'cpp', name: 'C++' },
+  { id: 'java', name: 'Java' },
+  { id: 'frontend', name: '前端' },
+  { id: 'mysql', name: 'MySQL' },
+  { id: 'go', name: 'Go' }
+];
+const LANG_LABEL = Object.fromEntries(LANGS.map((l) => [l.id, l.name]));
+const HOT = ['yield', 'RAII', 'interface', 'event loop', 'FULLTEXT', 'goroutine'];
+const $ = (id) => document.getElementById(id);
+const esc = (window.DSH_MD && window.DSH_MD.escapeHtml) || ((s) => String(s == null ? '' : s)
+  .replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
+
+const state = {
+  q: '',
+  lang: 'all',
+  aiLoading: false,
+  aiText: '',
+  aiError: '',
+  aiModel: '',
+  aiKeyword: ''
+};
+let aiSeq = 0;
+let toastTimer = null;
+
+function countFor(lang) {
+  return lang === 'all' ? DATA.length : DATA.filter((e) => e.lang === lang).length;
+}
+
+function entriesFor() {
+  const q = state.q.trim().toLowerCase();
+  return DATA.map((item, index) => ({ ...item, _idx: index })).filter((item) => {
+    if (state.lang !== 'all' && item.lang !== state.lang) return false;
+    if (!q) return true;
+    const haystack = [item.keyword, item.summary, item.note, item.code, item.category].join(' ').toLowerCase();
+    return haystack.includes(q);
+  });
+}
+
+function resetAI() {
+  aiSeq++;
+  state.aiLoading = false;
+  state.aiText = '';
+  state.aiError = '';
+  state.aiModel = '';
+  state.aiKeyword = '';
+}
+
+function renderChips() {
+  $('langchips').innerHTML = LANGS.map((lang) => {
+    const on = state.lang === lang.id ? ' on' : '';
+    return '<button class="langchip' + on + '" data-lang="' + lang.id + '">'
+      + esc(lang.name) + '<span>' + countFor(lang.id) + '</span></button>';
+  }).join('');
+}
+
+function renderHot() {
+  $('hot').innerHTML = '<span>热门：</span>' + HOT.map((word) =>
+    '<button data-hot="' + esc(word) + '">' + esc(word) + '</button>'
+  ).join('');
+}
+
+function cardHtml(item) {
+  return '<article class="kcard">'
+    + '<div class="khead">'
+    + '<span class="badge lang-' + item.lang + '">' + esc(LANG_LABEL[item.lang] || item.lang) + '</span>'
+    + '<h3>' + esc(item.keyword) + '</h3>'
+    + '<span class="cat">' + esc(item.category) + '</span>'
+    + '<div class="grow"></div>'
+    + '<button class="mini" data-copy-idx="' + item._idx + '">复制代码</button>'
+    + '</div>'
+    + '<p class="sum">' + esc(item.summary) + '</p>'
+    + '<pre class="kcode"><code>' + esc(item.code) + '</code></pre>'
+    + '<p class="note">' + esc(item.note) + '</p>'
+    + '<a class="doc" href="' + esc(item.docs) + '" target="_blank" rel="noreferrer">官方文档 ↗</a>'
+    + '</article>';
+}
+
+function overviewHtml() {
+  const tiles = LANGS.filter((lang) => lang.id !== 'all').map((lang) => {
+    const list = DATA.filter((item) => item.lang === lang.id);
+    const examples = list.slice(0, 3).map((item) => item.keyword).join('、');
+    return '<button class="langtile" data-lang="' + lang.id + '">'
+      + '<div class="tilehead"><span class="badge lang-' + lang.id + '">' + esc(lang.name) + '</span>'
+      + '<b>' + list.length + '</b> 条</div>'
+      + '<div class="tileex">' + esc(examples) + '…</div></button>';
+  }).join('');
+  return '<div class="langgrid">' + tiles + '</div>';
+}
+
+function renderResults() {
+  const items = entriesFor();
+  const q = state.q.trim();
+
+  if (!q && state.lang === 'all') {
+    $('resultbar').innerHTML = '<div class="hint">本地收录 <b>' + DATA.length + '</b> 条，覆盖 6 种语言；输入关键字开始查，或点下面的语言。</div>';
+    $('results').innerHTML = overviewHtml();
+    return;
+  }
+
+  const groups = LANGS.filter((lang) => lang.id !== 'all' && (state.lang === 'all' || state.lang === lang.id))
+    .map((lang) => ({ lang, list: items.filter((item) => item.lang === lang.id) }))
+    .filter((group) => group.list.length);
+
+  const aiLabel = q
+    ? '让 AI 解释「' + q + '」' + (state.lang === 'all' ? '' : '（' + LANG_LABEL[state.lang] + '）')
+    : '';
+  $('resultbar').innerHTML = '<div class="hint">'
+    + (q ? '关键字「<b>' + esc(q) + '</b>」找到 <b>' + items.length + '</b> 条' : esc(LANG_LABEL[state.lang]) + ' · <b>' + items.length + '</b> 条')
+    + '</div><div class="grow"></div>'
+    + (q ? '<button class="mini js-ai">' + esc(aiLabel) + '</button>' : '');
+
+  if (!items.length) {
+    $('results').innerHTML = '<div class="empty"><div class="big">🔍</div>'
+      + '<h3>本地没有收录「' + esc(q) + '」</h3>'
+      + '<p>可以换个关键字，或者让 AI 按六种语言补充解释。</p>'
+      + '<button class="primary js-ai">让 AI 解释</button></div>';
+    return;
+  }
+
+  $('results').innerHTML = groups.map((group) =>
+    '<h2 class="grouphead" style="font-size:13px;color:var(--muted);margin:16px 0 8px">'
+    + '<span class="badge lang-' + group.lang.id + '">' + esc(group.lang.name) + '</span>'
+    + ' <span style="font-weight:400">' + group.list.length + ' 条</span></h2>'
+    + group.list.map(cardHtml).join('')
+  ).join('');
+}
+
+function renderAI() {
+  const visible = state.aiLoading || state.aiText || state.aiError;
+  $('aiCard').style.display = visible ? '' : 'none';
+  $('aiModel').textContent = state.aiModel || '';
+  $('aiTitle').textContent = state.aiKeyword ? 'AI 补充解释：' + state.aiKeyword : 'AI 补充解释';
+
+  if (state.aiLoading) {
+    $('aiBody').innerHTML = '<div class="loading">正在按' + (state.lang === 'all' ? '六种语言' : LANG_LABEL[state.lang]) + '整理</div>';
+  } else if (state.aiError) {
+    $('aiBody').innerHTML = '<div class="err">' + esc(state.aiError) + '</div>';
+  } else if (state.aiText) {
+    $('aiBody').innerHTML = '<div class="md">' + window.DSH_MD.toHtml(state.aiText) + '</div>';
+  } else {
+    $('aiBody').innerHTML = '';
+  }
+}
+
+function render() {
+  $('countPill').textContent = DATA.length + ' 条 / 6 种语言';
+  renderChips();
+  renderHot();
+  renderResults();
+  renderAI();
+}
+
+async function askAI() {
+  state.q = $('q').value;
+  const keyword = state.q.trim();
+  if (!keyword || state.aiLoading) return;
+  const lang = state.lang;
+  const token = ++aiSeq;
+
+  state.aiLoading = true;
+  state.aiText = '';
+  state.aiError = '';
+  state.aiModel = '';
+  state.aiKeyword = keyword;
+  renderAI();
+  $('aiCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  try {
+    const response = await fetch('/api/keywords/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword, lang })
+    });
+    let data = {};
+    try { data = await response.json(); } catch (err) { /* 统一处理 */ }
+    if (token !== aiSeq) return;
+    if (!response.ok) throw new Error((data && data.detail) || ('请求失败（HTTP ' + response.status + '）'));
+    if (!data.ok || !data.reply) throw new Error((data && data.error) || 'AI 没有返回内容');
+    state.aiText = data.reply;
+    state.aiModel = data.model || '';
+    state.aiKeyword = data.keyword || keyword;
+  } catch (err) {
+    if (token !== aiSeq) return;
+    state.aiError = (err && err.message) ? err.message : String(err);
+  } finally {
+    if (token === aiSeq) {
+      state.aiLoading = false;
+      renderAI();
+    }
+  }
+}
+
+async function runGithub() {
+  const q = $('ghQ').value.trim();
+  if (!q) { $('ghOut').innerHTML = '<div class="err">先输入一个关键字</div>'; return; }
+  $('ghBtn').disabled = true;
+  $('ghOut').innerHTML = '<div class="loading">正在请求 GitHub</div>';
+  try {
+    const resp = await fetch('/api/keywords/github?q=' + encodeURIComponent(q) + '&limit=5');
+    const data = await resp.json();
+    if (!data.ok) {
+      $('ghOut').innerHTML = '<div class="err">' + esc(data.error || '请求失败') + '</div>';
+      return;
+    }
+    if (!data.items.length) {
+      $('ghOut').innerHTML = '<div class="hint">没有搜到仓库，换个关键字试试。</div>';
+      return;
+    }
+    $('ghOut').innerHTML = data.items.map((repo) =>
+      '<div class="repo"><div class="rhead">'
+      + '<a href="' + esc(repo.url) + '" target="_blank" rel="noreferrer">' + esc(repo.full_name) + '</a>'
+      + '<span class="stars">★ ' + Number(repo.stars || 0).toLocaleString('zh-CN') + '</span>'
+      + (repo.language ? '<span class="cat">' + esc(repo.language) + '</span>' : '')
+      + '</div>' + (repo.description ? '<p>' + esc(repo.description) + '</p>' : '') + '</div>'
+    ).join('');
+  } catch (err) {
+    $('ghOut').innerHTML = '<div class="err">' + esc(err.message || String(err)) + '</div>';
+  } finally {
+    $('ghBtn').disabled = false;
+  }
+}
+
+function toast(message) {
+  const el = $('toast');
+  el.textContent = message;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1600);
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('代码已复制');
+  } catch (err) {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    try { document.execCommand('copy'); toast('代码已复制'); }
+    catch (e) { toast('复制失败，请手动选择'); }
+    area.remove();
+  }
+}
+
+/* ------------------------------ 事件 ------------------------------ */
+
+let inputTimer = null;
+$('q').addEventListener('input', () => {
+  clearTimeout(inputTimer);
+  inputTimer = setTimeout(() => {
+    state.q = $('q').value;
+    resetAI();
+    render();
+  }, 120);
+});
+
+$('q').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    state.q = $('q').value;
+    resetAI();
+    render();
+  }
+});
+
+$('searchBtn').addEventListener('click', () => {
+  state.q = $('q').value;
+  resetAI();
+  render();
+});
+
+document.addEventListener('click', (event) => {
+  const lang = event.target.closest('[data-lang]');
+  if (lang) {
+    state.q = $('q').value;
+    state.lang = lang.getAttribute('data-lang');
+    resetAI();
+    render();
+    return;
+  }
+
+  const hot = event.target.closest('[data-hot]');
+  if (hot) {
+    state.q = hot.getAttribute('data-hot');
+    $('q').value = state.q;
+    resetAI();
+    render();
+    return;
+  }
+
+  if (event.target.closest('.js-ai')) {
+    askAI();
+    return;
+  }
+
+  const copy = event.target.closest('[data-copy-idx]');
+  if (copy) {
+    const item = DATA[Number(copy.getAttribute('data-copy-idx'))];
+    if (item) copyText(item.code);
+  }
+});
+
+$('ghBtn').addEventListener('click', runGithub);
+$('ghQ').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') { event.preventDefault(); runGithub(); }
+});
+
+render();
+$('q').focus();
+</script>
+</body>
+</html>

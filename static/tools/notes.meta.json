@@ -1,0 +1,6 @@
+{
+  "name": "小红书视频转笔记",
+  "description": "粘贴分享链接，自动转写并整理成 markdown 笔记",
+  "icon": "📝",
+  "order": 10
+}

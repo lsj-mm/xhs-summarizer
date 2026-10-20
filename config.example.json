@@ -1,0 +1,60 @@
+{
+  "output_dir": "output",
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8787
+  },
+  "download": {
+    "cookies_from_browser": "edge",
+    "cookies_file": "",
+    "proxy": "",
+    "use_system_proxy": false,
+    "format": "bestaudio/best",
+    "timeout_seconds": 120,
+    "keep_media": false
+  },
+  "asr": {
+    "provider": "siliconflow",
+    "api_key": "",
+    "base_url": "",
+    "model": "",
+    "language": "zh",
+    "segment_seconds": 600
+  },
+  "summarizer": {
+    "provider": "deepseek",
+    "api_key": "",
+    "base_url": "",
+    "model": "",
+    "temperature": 0.3,
+    "max_input_chars": 20000
+  },
+  "summary": {
+    "include_transcript": true,
+    "extra_instruction": ""
+  },
+  "github": {
+    "enabled": true,
+    "token": "",
+    "api_base": "https://api.github.com",
+    "timeout_seconds": 15,
+    "min_score": 60,
+    "min_stars": 50,
+    "max_tools": 20
+  },
+  "pronunciation": {
+    "provider": "azure",
+    "azure": {
+      "key": "",
+      "region": "",
+      "language": "en-US"
+    },
+    "xunfei": {
+      "app_id": "",
+      "api_key": "",
+      "api_secret": "",
+      "ent": "en_vip"
+    }
+  },
+  "workdir": "work"
+}
