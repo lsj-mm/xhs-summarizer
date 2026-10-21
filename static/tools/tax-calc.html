@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>税率计算</title>
+<link rel="stylesheet" href="/static/tools/_shared/base.css" />
+<style>
+  .tabs{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; border-bottom:1px solid var(--line); padding-bottom:10px}
+  .tabs button{font-family:inherit; font-size:13.5px; padding:8px 14px; border-radius:9px;
+    border:1px solid transparent; background:transparent; color:var(--muted); cursor:pointer}
+  .tabs button:hover{background:#f3f4f6}
+  .tabs button.on{background:var(--accent-soft); border-color:#cfe0ff; color:var(--accent-dark); font-weight:650}
+  .pane{display:none}
+  .pane.on{display:block}
+  .rates{display:grid; grid-template-columns:1fr 1fr; gap:18px}
+  .rates h3{font-size:13px; margin:0 0 8px; color:var(--muted)}
+  .rate-row{display:flex; align-items:center; gap:8px; margin-bottom:7px}
+  .rate-row span{flex:1; font-size:13px}
+  .rate-row input{width:78px; text-align:right; padding:6px 9px; font-size:13px}
+  .rate-row i{color:var(--muted); font-style:normal; font-size:12px}
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .pick{background:#fafbfc; border:1px solid var(--line); border-radius:10px; padding:12px 14px}
+  .pick.win{border-color:#bfe6cd; background:#f3fbf6}
+  .pick .t{font-size:13px; font-weight:600; margin-bottom:6px}
+  .pick .n{font-size:20px; font-weight:700; font-variant-numeric:tabular-nums}
+  .pick .s{font-size:12.5px; color:var(--muted); margin-top:2px}
+  .kv{display:flex; justify-content:space-between; font-size:13px; padding:3px 0}
+  .kv b{font-variant-numeric:tabular-nums}
+  .box{background:#fafbfc; border:1px solid var(--line); border-radius:10px; padding:14px}
+  .box.win{border-color:#bfe6cd; background:#f3fbf6}
+  .box h3{margin:0 0 10px; font-size:13px; color:var(--muted)}
+  .loanbox{border:1px dashed var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px}
+  .loanbox h4{margin:0 0 10px; font-size:13px; color:var(--muted)}
+  .quick{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px}
+  .quick button{font-size:12px; padding:4px 10px; border-radius:7px; border:1px solid var(--line);
+    background:#fff; cursor:pointer; color:var(--muted); font-family:inherit}
+  .quick button.on{background:var(--accent-soft); border-color:#cfe0ff; color:var(--accent-dark); font-weight:600}
+  .chk{display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600}
+  .chk input{width:auto}
+  .warnbox{background:#fffaf0; border:1px solid #f0dcb4; border-radius:10px; padding:12px 14px;
+    color:#8a6100; font-size:13px; line-height:1.7}
+  .grid2{display:flex; gap:6px}
+  .src{font-size:12px; color:var(--muted); line-height:1.9}
+  .src a{color:var(--accent-dark)}
+  @media (max-width:620px){ .rates,.two{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">💰</div>
+    <div>
+      <h1>税率计算</h1>
+      <div class="sub">工资个税 · 房贷 · 提前还款 · 车贷 · 增值税（默认成都口径）</div>
+    </div>
+  </header>
+
+  <div class="tabs" id="tabs">
+    <button data-t="salary" class="on">工资 / 个税</button>
+    <button data-t="mortgage">房贷</button>
+    <button data-t="prepay">提前还款</button>
+    <button data-t="carloan">车贷</button>
+    <button data-t="vat">增值税换算</button>
+  </div>
+
+  <!-- ================= 工资 / 个税 ================= -->
+  <div class="pane on" id="pane-salary">
+    <div class="card">
+      <h2>政策口径</h2>
+      <div class="row">
+        <div class="field" style="flex:0 0 260px"><label>城市预设</label><select id="s_city"></select></div>
+        <div class="field" style="flex:1"><label>当前口径</label><div class="hint" id="s_policyNote" style="padding-top:8px"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>工资与缴费基数</h2>
+      <div class="row">
+        <div class="field"><label>税前月薪（元）</label><input type="number" id="s_salary" value="30000" min="0" step="500" /></div>
+        <div class="field"><label>发薪月数（月）</label>
+          <input type="number" id="s_salaryMonths" value="12" min="1" max="60" step="1" />
+        </div>
+        <div class="field"><label>社保缴费基数（元）</label><input type="number" id="s_base" value="10000" min="0" step="100" /></div>
+        <div class="field">
+          <label>公积金基数（留空 / 0 = 无公积金）</label>
+          <div style="display:flex; gap:6px">
+            <input type="number" id="s_fundBase" placeholder="0 = 不缴公积金" min="0" step="100" style="flex:1; min-width:0" />
+            <button type="button" class="ghost" id="s_fundSame" style="padding:0 10px; font-size:12px; white-space:nowrap">同社保</button>
+          </div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="field"><label>社保基数下限 / 上限</label>
+          <div class="grid2"><input type="number" id="s_smMin" /><input type="number" id="s_smMax" /></div>
+        </div>
+        <div class="field"><label>公积金基数下限 / 上限</label>
+          <div class="grid2"><input type="number" id="s_fmMin" /><input type="number" id="s_fmMax" /></div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="field"><label>专项附加扣除 / 月（元）</label><input type="number" id="s_special" value="0" min="0" step="100" /></div>
+        <div class="field"><label>个税起征点 / 月（元）</label><input type="number" id="s_threshold" value="5000" min="0" step="100" /></div>
+      </div>
+      <p class="warnline" id="s_clampNote" style="margin:10px 0 0"></p>
+    </div>
+
+    <div class="card">
+      <h2>五险一金比例（%）</h2>
+      <div class="rates">
+        <div>
+          <h3>个人缴纳</h3>
+          <div class="rate-row"><span>养老保险</span><input type="number" id="s_e_pension" step="0.1" min="0" /><i>%</i></div>
+          <div class="rate-row"><span>医疗保险</span><input type="number" id="s_e_medical" step="0.1" min="0" /><i>%</i></div>
+          <div class="rate-row"><span>失业保险</span><input type="number" id="s_e_unemployment" step="0.1" min="0" /><i>%</i></div>
+          <div class="rate-row"><span>住房公积金</span><input type="number" id="s_e_fund" step="0.5" min="0" /><i>%</i></div>
+        </div>
+        <div>
+          <h3>单位缴纳</h3>
+          <div class="rate-row"><span>养老保险</span><input type="number" id="s_r_pension" step="0.1" min="0" /><i>%</i></div>
+          <div class="rate-row"><span>医疗保险</span><input type="number" id="s_r_medical" step="0.1" min="0" /><i>%</i></div>
+          <div class="rate-row"><span>失业保险</span><input type="number" id="s_r_unemployment" step="0.1" min="0" /><i>%</i></div>
+          <div class="rate-row"><span>工伤保险</span><input type="number" id="s_r_injury" step="0.1" min="0" /><i>%</i></div>
+          <div class="rate-row"><span>生育保险</span><input type="number" id="s_r_maternity" step="0.1" min="0" /><i>%</i></div>
+          <div class="rate-row"><span>大病医疗互助</span><input type="number" id="s_r_serious" step="0.1" min="0" /><i>%</i></div>
+          <div class="rate-row"><span>住房公积金</span><input type="number" id="s_r_fund" step="0.5" min="0" /><i>%</i></div>
+        </div>
+      </div>
+      <p class="hint" style="margin:10px 0 0">工伤、生育、大病医疗互助按政策只有单位缴，所以个人列没有对应输入。</p>
+    </div>
+
+    <div class="card">
+      <h2>每月结果</h2>
+      <div class="results" id="s_summary"></div>
+      <p class="note" style="margin:12px 0 0" id="s_formulaNote"></p>
+    </div>
+
+    <div class="card">
+      <h2>年终奖：单独计税 vs 并入综合所得</h2>
+      <div class="row">
+        <div class="field" style="flex:0 0 240px"><label>年终奖金额（元）</label><input type="number" id="s_bonus" value="36000" min="0" step="1000" /></div>
+        <div class="field" style="flex:1"><label>说明</label>
+          <div class="hint" style="padding-top:8px">按上面的月薪与发薪月数推算全年工资和全年扣除额，比较两种计税方式（政策延续至 2027-12-31）。发薪月数填 12 以上的部分按工资计税；如果单位把第 13 薪当年终奖发，请把发薪月数改回 12，并把金额填到这里。</div>
+        </div>
+      </div>
+      <div class="two" id="s_bonusCompare" style="margin-top:12px"></div>
+      <p class="note" style="margin:12px 0 0" id="s_bonusNote"></p>
+    </div>
+
+    <div class="card">
+      <h2>逐月个税与到手（累计预扣法）</h2>
+      <div class="scroll" id="s_monthTable"></div>
+      <p class="note" style="margin:10px 0 0">税率跳档时当月个税会明显变多，这是累计预扣法的正常现象，全年总额不变。发薪月数大于 12 时，多出的工资按年末发放计入累计收入，不再重复扣五险一金和起征点；表格最后一行为全年合计。</p>
+    </div>
+
+    <div class="card">
+      <h2>五险一金明细</h2>
+      <div id="s_siTable"></div>
+    </div>
+
+    <p class="note">本工具按你填写的比例与基数估算，<b>不是官方口径</b>；比例与上下限会随政策调整，请以当地人社、医保、公积金、税务部门公布的标准为准。数据来源：</p>
+    <div class="src" id="s_sources"></div>
+  </div>
+
+  <!-- ================= 房贷 ================= -->
+  <div class="pane" id="pane-mortgage">
+    <div class="card">
+      <h2>贷款方式</h2>
+      <div class="row">
+        <div class="field" style="flex:0 0 auto">
+          <div class="seg" id="m_mode">
+            <button data-m="single" class="on">单笔贷款</button>
+            <button data-m="combined">组合贷（公积金 + 商贷）</button>
+          </div>
+        </div>
+        <div class="field" style="flex:0 0 auto"><label>还款方式</label>
+          <div class="seg" id="m_method">
+            <button data-m="equal_installment" class="on">等额本息</button>
+            <button data-m="equal_principal">等额本金</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>房屋与首付</h2>
+      <div class="row">
+        <div class="field"><label>房屋总价（元）</label><input type="number" id="m_price" value="2000000" min="0" step="10000" /></div>
+        <div class="field" style="flex:0 0 150px"><label>首付比例（%）</label><input type="number" id="m_downPct" value="30" min="0" max="100" step="1" /></div>
+        <div class="field"><label>贷款年限（年）</label><input type="number" id="m_years" value="30" min="1" max="40" step="1" /></div>
+      </div>
+      <p class="hint" id="m_amountNote" style="margin:10px 0 0"></p>
+    </div>
+
+    <div class="card" id="m_singleBox">
+      <h2>单笔贷款</h2>
+      <div class="row">
+        <div class="field" style="flex:0 0 210px"><label>贷款类型</label>
+          <select id="m_loanType">
+            <option value="commercial">商业贷款（参考 3.1%）</option>
+            <option value="fund">公积金贷款（参考 2.85%）</option>
+            <option value="custom">自定义利率</option>
+          </select>
+        </div>
+        <div class="field"><label>年利率（%）</label><input type="number" id="m_rate" value="3.1" min="0" step="0.05" /></div>
+      </div>
+    </div>
+
+    <div class="card" id="m_combinedBox" style="display:none">
+      <h2>组合贷：两笔分别计息</h2>
+      <div class="loanbox">
+        <h4>公积金贷款部分</h4>
+        <div class="row">
+          <div class="field"><label>贷款金额（元）</label><input type="number" id="m_fundAmount" value="700000" min="0" step="10000" /></div>
+          <div class="field"><label>年利率（%）</label><input type="number" id="m_fundRate" value="2.85" min="0" step="0.05" /></div>
+        </div>
+      </div>
+      <div class="loanbox" style="margin-bottom:0">
+        <h4>商业贷款部分（金额 = 贷款总额 − 公积金部分）</h4>
+        <div class="row">
+          <div class="field"><label>贷款金额（元）</label><input type="number" id="m_commAmount" readonly /></div>
+          <div class="field"><label>年利率（%）</label><input type="number" id="m_commRate" value="3.1" min="0" step="0.05" /></div>
+        </div>
+      </div>
+      <p class="hint" style="margin:10px 0 0">成都公积金贷款有额度上限，请按实际批贷额度填写；两笔按同一期限计算。</p>
+    </div>
+
+    <div class="card">
+      <h2>结果</h2>
+      <div class="results" id="m_summary"></div>
+      <p class="note" style="margin:12px 0 0" id="m_headline"></p>
+    </div>
+
+    <div class="card">
+      <h2>按年还款计划</h2>
+      <div class="scroll" id="m_yearTable"></div>
+    </div>
+
+    <div class="card">
+      <h2>每期明细</h2>
+      <div id="m_scheduleWrap"></div>
+    </div>
+
+    <p class="note">利率请按贷款合同填写（房贷多为「LPR + 基点」且每年可能调整，这里按固定利率计算）；结果仅供参考。想算提前还款，切到「提前还款」标签。</p>
+  </div>
+
+  <!-- ================= 提前还款 ================= -->
+  <div class="pane" id="pane-prepay">
+    <div class="card">
+      <h2>你的贷款</h2>
+      <div class="row">
+        <div class="field"><label>贷款总额（元）</label><input type="number" id="p_principal" value="1000000" min="0" step="10000" /></div>
+        <div class="field"><label>年利率（%）</label><input type="number" id="p_rate" value="4.9" min="0" step="0.05" /></div>
+        <div class="field" style="flex:0 0 140px"><label>期限（年）</label><input type="number" id="p_years" value="30" min="1" max="40" step="1" /></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="field"><label>已还期数（月）</label><input type="number" id="p_paid" value="36" min="0" step="1" /></div>
+        <div class="field"><label>提前还款金额（元）</label><input type="number" id="p_prepay" value="200000" min="0" step="10000" /></div>
+        <div class="field"><label>违约金 / 手续费（元，可选）</label><input type="number" id="p_penalty" value="0" min="0" step="100" /></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="field" style="flex:0 0 auto"><label>还款方式</label>
+          <div class="seg" id="p_method">
+            <button data-m="equal_installment" class="on">等额本息</button>
+            <button data-m="equal_principal">等额本金</button>
+          </div>
+        </div>
+        <div class="field" style="flex:0 0 auto"><label>提前还款后</label>
+          <div class="seg" id="p_strategy">
+            <button data-m="reduce_payment" class="on">减少月供（期限不变）</button>
+            <button data-m="shorten_term">缩短期限（月供不变）</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>结果</h2>
+      <div class="results" id="p_summary"></div>
+    </div>
+
+    <div class="card">
+      <h2>还款计划对比（从提前还款这一期起）</h2>
+      <div class="two">
+        <div class="box" id="p_oldBox"></div>
+        <div class="box win" id="p_newBox"></div>
+      </div>
+      <p class="note" style="margin:12px 0 0" id="p_note"></p>
+    </div>
+
+    <div class="card">
+      <h2>提前还款后的按年计划</h2>
+      <div class="scroll" id="p_yearTable"></div>
+    </div>
+
+    <p class="note">各银行对提前还款的次数、最低金额、违约金规定不同（部分还要求预约），请以贷款合同为准；这里只算利息账。缩期方式月供不变、提前还完；减月供方式期限不变、月供降低。</p>
+  </div>
+
+  <!-- ================= 车贷 ================= -->
+  <div class="pane" id="pane-carloan">
+    <div class="card">
+      <h2>车辆与贷款</h2>
+      <div class="row">
+        <div class="field"><label>车辆价格（元）</label><input type="number" id="c_price" value="150000" min="0" step="1000" /></div>
+        <div class="field" style="flex:0 0 150px"><label>首付比例（%）</label><input type="number" id="c_downPct" value="30" min="0" max="100" step="5" /></div>
+        <div class="field"><label>合同年利率（%）</label><input type="number" id="c_rate" value="4.5" min="0" step="0.1" /></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="field" style="flex:0 0 260px">
+          <label>分期期数</label>
+          <input type="number" id="c_months" value="36" min="1" max="120" step="1" />
+          <div class="quick" id="c_quickMonths">
+            <button data-m="12">12 期</button><button data-m="24">24 期</button>
+            <button data-m="36" class="on">36 期</button><button data-m="48">48 期</button>
+            <button data-m="60">60 期</button>
+          </div>
+        </div>
+        <div class="field"><label>还款方式</label>
+          <div class="seg" id="c_method">
+            <button data-m="equal_installment" class="on">等额本息</button>
+            <button data-m="equal_principal">等额本金</button>
+          </div>
+        </div>
+        <div class="field"><label>其他费用（保险、上牌等，元）</label><input type="number" id="c_other" value="0" min="0" step="500" /></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="field" style="flex:0 0 240px">
+          <label>贷款手续费 / 服务费（元，前置）</label>
+          <input type="number" id="c_fee" value="0" min="0" step="500" />
+          <div class="hint">从放款里先扣走、或另收的费用，会让真实年化明显高于合同利率。</div>
+        </div>
+        <div class="field" style="flex:0 0 auto">
+          <label class="chk"><input type="checkbox" id="c_purchaseTax" checked /> 计算车辆购置税（燃油车）</label>
+          <div class="hint">购置税 = 车价 ÷ 1.13 × 10%（新能源车通常免征，请按当地政策取消勾选）</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>结果</h2>
+      <div class="results" id="c_summary"></div>
+      <p class="note" style="margin:12px 0 0" id="c_headline"></p>
+    </div>
+
+    <div class="card">
+      <h2>真实年化（把手续费算进去）</h2>
+      <div class="results" id="c_irrCards"></div>
+      <div id="c_irrNote" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card">
+      <h2>按年还款计划</h2>
+      <div class="scroll" id="c_yearTable"></div>
+    </div>
+
+    <div class="card">
+      <details>
+        <summary>展开每一期的明细（共 <span id="c_periodCount">0</span> 期）</summary>
+        <div class="scroll" id="c_scheduleTable" style="margin-top:8px"></div>
+      </details>
+    </div>
+
+    <p class="note">车贷常见「贴息」「服务费」「GPS 费」等，都会抬高真实成本；请把前置费用填进「手续费」看真实年化。结果仅供参考，实际以贷款机构的还款计划为准。</p>
+  </div>
+
+  <!-- ================= 增值税 ================= -->
+  <div class="pane" id="pane-vat">
+    <div class="card">
+      <h2>输入</h2>
+      <div class="row">
+        <div class="field" style="flex:1.2"><label>金额（元）</label><input type="number" id="v_amount" value="1000" min="0" step="0.01" /></div>
+        <div class="field"><label>这个金额是</label>
+          <div class="seg" id="v_mode">
+            <button data-m="incl" class="on">含税价</button>
+            <button data-m="excl">不含税价</button>
+          </div>
+        </div>
+        <div class="field"><label>税率</label><select id="v_rate"></select></div>
+        <div class="field" id="v_customWrap" style="display:none; flex:0 0 130px">
+          <label>自定义税率（%）</label><input type="number" id="v_customRate" value="13" min="0" step="0.01" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>结果</h2>
+      <div class="results">
+        <div class="res main"><div class="k">不含税金额</div><div class="v" id="v_excl">—</div></div>
+        <div class="res"><div class="k">税额</div><div class="v" id="v_tax">—</div></div>
+        <div class="res"><div class="k">价税合计（含税）</div><div class="v" id="v_incl">—</div></div>
+      </div>
+      <p class="note" style="margin:12px 0 0" id="v_check"></p>
+      <div class="row" style="margin-top:12px">
+        <button class="primary" id="v_copy">复制结果</button>
+        <span class="hint" id="v_copyHint"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>常见税率参考</h2>
+      <table>
+        <thead><tr><th>税率</th><th>常见适用范围</th><th class="num">1000 元含税 → 不含税 / 税额</th></tr></thead>
+        <tbody id="v_rateTable"></tbody>
+      </table>
+      <p class="note" style="margin:12px 0 0">
+        计算方式：<code>不含税 = 含税 ÷ (1 + 税率)</code>，<code>税额 = 不含税 × 税率</code>。结果四舍五入到分；
+        实务中发票按行项目分别取整后合计，与整单计算可能相差一分。
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="/static/tools/_shared/finance.js"></script>
+<script src="/static/tools/_shared/loan-ui.js"></script>
+<script src="/static/tools/_shared/presets.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const N = (id) => FIN.toNum($(id).value);
+const P = window.POLICY_PRESETS;
+
+/* ---------------- 标签切换 ---------------- */
+function showTab(name){
+  $('tabs').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.getAttribute('data-t') === name));
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + name));
+  if (location.hash !== '#/' + name) history.replaceState(null, '', '#/' + name);
+}
+$('tabs').querySelectorAll('button').forEach(b => { b.onclick = () => showTab(b.getAttribute('data-t')); });
+function bindSeg(id, cb){
+  $(id).querySelectorAll('button').forEach(btn => {
+    btn.onclick = () => {
+      $(id).querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
+      cb(btn.getAttribute('data-m'));
+    };
+  });
+}
+
+/* ================= 标签 1：工资 / 个税 ================= */
+(function initSalary(){
+  const F = (id) => N('s_' + id);
+  let si = null, iit = null, collected = null;
+  // 默认公积金基数跟随社保基数；用户手动改过公积金基数后就不再自动跟随
+  let fundAuto = true;
+
+  function applyCity(key){
+    const c = P.cities[key];
+    $('s_policyNote').textContent = c
+      ? `${c.name}：社保基数 ${FIN.money(c.social.baseMin,0)}~${FIN.money(c.social.baseMax,0)}，`
+        + `公积金基数 ${FIN.money(c.fund.baseMin,0)}~${FIN.money(c.fund.baseMax,0)}（中心城区下限）`
+      : '自定义：比例与上下限都按你填的算';
+    if (!c) return;
+    $('s_smMin').value = c.social.baseMin; $('s_smMax').value = c.social.baseMax;
+    $('s_fmMin').value = c.fund.baseMin;   $('s_fmMax').value = c.fund.baseMax;
+    // 套用城市预设时默认按社保基数缴公积金；不想缴就清空或填 0
+    fundAuto = true;
+    syncFundBase();
+    $('s_e_pension').value = c.social.employee.pension;
+    $('s_e_medical').value = c.social.employee.medical;
+    $('s_e_unemployment').value = c.social.employee.unemployment;
+    $('s_e_fund').value = c.social.employee.fund;
+    $('s_r_pension').value = c.social.employer.pension;
+    $('s_r_medical').value = c.social.employer.medical;
+    $('s_r_unemployment').value = c.social.employer.unemployment;
+    $('s_r_injury').value = c.social.employer.injury;
+    $('s_r_maternity').value = c.social.employer.maternity;
+    $('s_r_serious').value = c.social.employer.serious;
+    $('s_r_fund').value = c.social.employer.fund;
+  }
+
+  function collect(){
+    const sm = FIN.clampBase(F('base'), F('smMin'), F('smMax'));
+    // 公积金基数为空或 0 表示单位不缴公积金，不能按上下限抬到下限（那样会凭空多出公积金）
+    const rawFund = F('fundBase');
+    const fm = rawFund > 0
+      ? FIN.clampBase(rawFund, F('fmMin'), F('fmMax'))
+      : { value: 0, clamped: null };
+    return {
+      salary: F('salary'), salaryMonths: Math.min(60, Math.max(1, Math.round(F('salaryMonths') || 12))),
+      special: F('special'), threshold: F('threshold'), bonus: F('bonus'),
+      socialBase: sm, fundBase: fm,
+      employee: { pension: F('e_pension'), medical: F('e_medical'),
+                  unemployment: F('e_unemployment'), fund: F('e_fund') },
+      employer: { pension: F('r_pension'), medical: F('r_medical'),
+                  unemployment: F('r_unemployment'), injury: F('r_injury'),
+                  maternity: F('r_maternity'), serious: F('r_serious'), fund: F('r_fund') },
+    };
+  }
+
+  /** 公积金基数默认跟随社保基数；用户手动改过之后就不再自动覆盖 */
+  function syncFundBase(){
+    if (!fundAuto) return;
+    const sm = FIN.clampBase(F('base'), F('smMin'), F('smMax'));
+    $('s_fundBase').value = sm.value;
+  }
+
+  function render(){
+    const i = collect(); collected = i;
+    si = FIN.socialInsurance({ base: i.socialBase.value, fundBase: i.fundBase.value,
+                               employee: i.employee, employer: i.employer });
+    iit = FIN.iitSchedule({ monthlyIncome: i.salary, socialInsurance: si.employeeTotal,
+                            specialDeduction: i.special, threshold: i.threshold,
+                            months: 12, extraSalaryMonths: Math.max(0, i.salaryMonths - 12) });
+
+    const msgs = [];
+    [['socialBase','社保'], ['fundBase','公积金']].forEach(([k, label]) => {
+      const b = i[k];
+      if (b.clamped === 'min') msgs.push(`${label}基数已按下限 ${FIN.money(b.value,0)} 计算`);
+      if (b.clamped === 'max') msgs.push(`${label}基数已按上限 ${FIN.money(b.value,0)} 计算`);
+    });
+    $('s_clampNote').textContent = msgs.length ? '⚠ ' + msgs.join('；') : '';
+
+    const annualGross = FIN.round2(i.salary * i.salaryMonths);
+    $('s_summary').innerHTML = LoanUI.cardsHtml([
+      { k: '全年税前收入', v: FIN.money(annualGross), cls: 'main' },
+      { k: '全年个税（工资）', v: FIN.money(iit.yearTax) },
+      { k: '全年工资到手', v: FIN.money(iit.yearNet), cls: 'main good' },
+      { k: '月均到手（按 12 个月）', v: FIN.money(iit.monthlyNetAvg) },
+      { k: '个人五险一金 / 月', v: FIN.money(si.employeeTotal) },
+      { k: '单位五险一金 / 月', v: FIN.money(si.employerTotal) },
+      { k: '首月个税', v: FIN.money(iit.rows.length ? iit.rows[0].tax : 0) },
+      { k: '单位月成本', v: FIN.money(i.salary + si.employerTotal) },
+    ]);
+    const extraNote = i.salaryMonths > 12
+      ? `${i.salaryMonths} 薪多出的 ${i.salaryMonths - 12} 个月工资按年末发放计入累计收入，`
+        + `不再重复扣五险一金和起征点。`
+      : '';
+    $('s_formulaNote').innerHTML =
+      `应纳税所得额 = 月薪 − 起征点(${FIN.money(i.threshold,0)}) − 个人五险一金(${FIN.money(si.employeeTotal)})`
+      + ` − 专项附加扣除(${FIN.money(i.special)})，再按累计预扣率表逐月计算。`
+      + extraNote + `全年工资到手合计 ${FIN.money(iit.yearNet)} 元。`;
+
+    renderBonus(i, si);
+    renderTables(i, si, iit);
+  }
+
+  function renderBonus(i, s){
+    const annualIncome = i.salary * i.salaryMonths;
+    const annualDeductions = (i.threshold + s.employeeTotal + i.special) * 12;
+    const r = FIN.yearlyBonusTax({ bonus: i.bonus, annualIncome, annualDeductions });
+    if (i.bonus <= 0) {
+      $('s_bonusCompare').innerHTML = '<div class="pick"><div class="t">未填年终奖</div>'
+        + '<div class="s">填一个金额就能对比两种计税方式。</div></div>';
+      $('s_bonusNote').textContent = '';
+      return;
+    }
+    const sepWin = r.better === 'separate';
+    $('s_bonusCompare').innerHTML = `
+      <div class="pick ${sepWin ? 'win' : ''}">
+        <div class="t">单独计税 ${sepWin ? '✅ 更省' : ''}</div>
+        <div class="n">${FIN.money(r.separateTax)} <span style="font-size:12px;color:var(--muted)">元税</span></div>
+        <div class="s">奖金到手 ${FIN.money(r.separateNet)} 元 · 奖金÷12 = ${FIN.money(i.bonus/12)} 元，适用 ${(r.separateBracket.rate*100).toFixed(0)}% 档</div>
+      </div>
+      <div class="pick ${sepWin ? '' : 'win'}">
+        <div class="t">并入综合所得 ${sepWin ? '' : '✅ 更省'}</div>
+        <div class="n">${FIN.money(r.combinedTax)} <span style="font-size:12px;color:var(--muted)">元税</span></div>
+        <div class="s">奖金到手 ${FIN.money(r.combinedNet)} 元 · 全年应纳税所得额 ${FIN.money(Math.max(0, annualIncome + i.bonus - annualDeductions))} 元</div>
+      </div>`;
+    const parts = [`结论：用「${sepWin ? '单独计税' : '并入综合所得'}」少缴 ${FIN.money(r.saving)} 元。`];
+    const bestBonusNet = sepWin ? r.separateNet : r.combinedNet;
+    parts.push(`按这个方式，全年工资 + 年终奖到手约 ${FIN.money(iit.yearNet + bestBonusNet)} 元`
+      + `（工资 ${FIN.money(iit.yearNet)} + 奖金 ${FIN.money(bestBonusNet)}）。`);
+    const thresholds = FIN.BONUS_BRACKETS.filter(b => b.limit !== Infinity).map(b => b.limit * 12);
+    const lower = thresholds.filter(t => t < i.bonus).pop();
+    if (lower) {
+      const taxAtLower = FIN.bonusSeparateTax(lower);
+      if (taxAtLower < r.separateTax) {
+        parts.push(`⚠ 临界点提示：奖金降到 ${FIN.money(lower,0)} 元时单独计税只要 ${FIN.money(taxAtLower)} 元，`
+          + `比现在少缴 ${FIN.money(r.separateTax - taxAtLower)} 元（多发一点反而到手更少）。`);
+      }
+    }
+    $('s_bonusNote').innerHTML = parts.join(' ');
+  }
+
+  function renderTables(i, s, t){
+    const last = t.rows[t.rows.length - 1];
+    $('s_monthTable').innerHTML = `<table>
+      <thead><tr><th>月份</th><th class="num">累计收入</th><th class="num">累计应纳税所得额</th>
+        <th class="num">预扣率</th><th class="num">当月个税</th><th class="num">累计已缴</th>
+        <th class="num">当月到手</th></tr></thead>
+      <tbody>${t.rows.map(r => `<tr><td>${r.extra ? r.month + ' 薪' : r.month + ' 月'}</td><td class="num">${FIN.money(r.incomeCum)}</td>
+        <td class="num">${FIN.money(r.taxableCum)}</td><td class="num">${(r.rate*100).toFixed(0)}%</td>
+        <td class="num">${FIN.money(r.tax)}</td><td class="num">${FIN.money(r.taxPaid)}</td>
+        <td class="num">${FIN.money(r.net)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td><b>全年合计</b></td><td class="num"><b>${FIN.money(last.incomeCum)}</b></td>
+        <td class="num"><b>${FIN.money(last.taxableCum)}</b></td><td class="num">—</td>
+        <td class="num"><b>${FIN.money(t.yearTax)}</b></td><td class="num"><b>${FIN.money(last.taxPaid)}</b></td>
+        <td class="num"><b>${FIN.money(t.yearNet)}</b></td></tr></tfoot></table>`;
+
+    $('s_siTable').innerHTML = `<table>
+      <thead><tr><th>项目</th><th class="num">个人比例</th><th class="num">个人缴纳</th>
+        <th class="num">单位比例</th><th class="num">单位缴纳</th></tr></thead>
+      <tbody>${s.rows.map(r => `<tr><td>${r.name}</td><td class="num">${r.employeeRate}%</td>
+        <td class="num">${FIN.money(r.employee)}</td><td class="num">${r.employerRate}%</td>
+        <td class="num">${FIN.money(r.employer)}</td></tr>`).join('')}
+      <tr><td><b>合计</b></td><td class="num"></td><td class="num"><b>${FIN.money(s.employeeTotal)}</b></td>
+        <td class="num"></td><td class="num"><b>${FIN.money(s.employerTotal)}</b></td></tr></tbody></table>`;
+  }
+
+  $('s_city').innerHTML = Object.entries(P.cities).map(([k, c]) => `<option value="${k}">${c.name}</option>`).join('')
+    + '<option value="custom">自定义（不套用预设）</option>';
+  $('s_city').value = 'chengdu';
+  $('s_sources').innerHTML = P.sources.map(s => `· <a href="${s.url}" target="_blank" rel="noreferrer">${s.label}</a>`).join('<br />');
+  $('s_city').onchange = () => {
+    if ($('s_city').value !== 'custom') applyCity($('s_city').value);
+    else $('s_policyNote').textContent = '自定义：比例与上下限都按你填的算';
+    render();
+  };
+  $('s_fundSame').onclick = () => {
+    const sm = FIN.clampBase(F('base'), F('smMin'), F('smMax'));
+    fundAuto = true;
+    $('s_fundBase').value = sm.value;
+    render();
+  };
+  // 先同步公积金基数，再让下面的通用 input 监听触发 render
+  ['base','smMin','smMax'].forEach(id => $('s_' + id).addEventListener('input', syncFundBase));
+  $('s_fundBase').addEventListener('input', () => { fundAuto = false; });
+  ['salary','salaryMonths','base','fundBase','special','threshold','bonus','smMin','smMax','fmMin','fmMax',
+   'e_pension','e_medical','e_unemployment','e_fund',
+   'r_pension','r_medical','r_unemployment','r_injury','r_maternity','r_serious','r_fund']
+    .forEach(id => { const el = $('s_' + id); el.addEventListener('input', render); el.addEventListener('change', render); });
+  applyCity('chengdu');
+  render();
+})();
+
+/* ================= 标签 2：房贷 ================= */
+(function initMortgage(){
+  let mode = 'single', method = 'equal_installment';
+  bindSeg('m_mode', v => { mode = v; $('m_singleBox').style.display = v === 'single' ? '' : 'none';
+                           $('m_combinedBox').style.display = v === 'combined' ? '' : 'none'; calc(); });
+  bindSeg('m_method', v => { method = v; calc(); });
+  $('m_loanType').onchange = () => {
+    const v = $('m_loanType').value;
+    if (v === 'commercial') $('m_rate').value = 3.1;
+    else if (v === 'fund') $('m_rate').value = 2.85;
+    calc();
+  };
+
+  function calc(){
+    const price = N('m_price');
+    const downPct = Math.min(100, Math.max(0, N('m_downPct')));
+    const down = FIN.round2(price * downPct / 100);
+    const totalLoan = FIN.round2(price - down);
+    const years = Math.max(1, Math.round(N('m_years')));
+    const months = years * 12;
+
+    if (!price) {
+      $('m_summary').innerHTML = LoanUI.cardsHtml([{ k: '提示', v: '请输入房屋总价' }]);
+      $('m_yearTable').innerHTML = ''; $('m_scheduleWrap').innerHTML = '';
+      $('m_headline').textContent = ''; $('m_amountNote').textContent = '';
+      return;
+    }
+    $('m_amountNote').innerHTML = `首付 <b>${FIN.money(down)}</b> 元（${downPct}%），需贷款 <b>${FIN.money(totalLoan)}</b> 元，${months} 期。`;
+
+    const parts = [];
+    if (mode === 'single') {
+      parts.push({ principal: totalLoan, annualRate: N('m_rate'), months, method });
+    } else {
+      const fundAmount = Math.min(totalLoan, Math.max(0, N('m_fundAmount')));
+      const commAmount = FIN.round2(Math.max(0, totalLoan - fundAmount));
+      $('m_commAmount').value = commAmount;
+      if (fundAmount > 0) parts.push({ principal: fundAmount, annualRate: N('m_fundRate'), months, method });
+      if (commAmount > 0) parts.push({ principal: commAmount, annualRate: N('m_commRate'), months, method });
+    }
+
+    const combo = FIN.combinedLoan(parts);
+    const isCombined = mode === 'combined' && parts.length > 1;
+    const cards = [{ k: `首付（${downPct}%）`, v: FIN.money(down) }];
+    parts.forEach((p, idx) => {
+      const label = isCombined ? (idx === 0 ? '公积金贷款' : '商业贷款') : '贷款金额';
+      const l = combo.loans[idx];
+      cards.push({ k: `${label} / 月供`,
+        v: FIN.money(l.method === 'equal_installment' ? l.monthly : l.firstPayment),
+        cls: isCombined ? '' : 'main' });
+    });
+    if (isCombined) cards.push({ k: '月供合计', v: FIN.money(combo.monthlySum), cls: 'main' });
+    cards.push({ k: '贷款合计', v: FIN.money(combo.totalPrincipal) });
+    cards.push({ k: '利息合计', v: FIN.money(combo.totalInterest) });
+    cards.push({ k: '还款合计', v: FIN.money(combo.totalPayment), cls: 'good' });
+    $('m_summary').innerHTML = LoanUI.cardsHtml(cards);
+
+    const ratio = combo.totalPrincipal ? (combo.totalInterest / combo.totalPrincipal * 100).toFixed(1) : '0';
+    $('m_headline').innerHTML = isCombined
+      ? `组合贷 ${FIN.money(combo.totalPrincipal)} 元（公积金 ${FIN.money(combo.loans[0].principal)} @ ${N('m_fundRate')}% + `
+        + `商贷 ${FIN.money(combo.loans[1].principal)} @ ${N('m_commRate')}%），${months} 期`
+        + `${method === 'equal_installment' ? '等额本息' : '等额本金'}：月供合计 <b>${FIN.money(combo.monthlySum)}</b> 元，`
+        + `利息合计 <b>${FIN.money(combo.totalInterest)}</b> 元（相当于贷款额的 ${ratio}%）。`
+      : `贷款 <b>${FIN.money(combo.totalPrincipal)}</b> 元，${months} 期（${years} 年），年利率 ${N('m_rate')}%，`
+        + `${method === 'equal_installment' ? '等额本息' : '等额本金'}：利息合计 <b>${FIN.money(combo.totalInterest)}</b> 元`
+        + `（相当于贷款额的 ${ratio}%），连本带息共还 ${FIN.money(combo.totalPayment)} 元。`;
+
+    $('m_yearTable').innerHTML = isCombined
+      ? LoanUI.yearTableRowsHtml(LoanUI.yearRowsMerged(combo.loans))
+      : LoanUI.yearTableHtml(combo.loans[0]);
+
+    $('m_scheduleWrap').innerHTML = combo.loans.map((l, idx) => {
+      const name = isCombined ? (idx === 0 ? '公积金贷款' : '商业贷款') : '贷款';
+      return `<details ${combo.loans.length === 1 ? 'open' : ''}>
+        <summary>${name}：共 ${l.schedule.length} 期，展开看每期明细</summary>
+        <div class="scroll" style="margin-top:8px">${LoanUI.scheduleTableHtml(l, '期')}</div>
+      </details>`;
+    }).join('');
+  }
+
+  ['price','downPct','years','rate','fundAmount','fundRate','commRate']
+    .forEach(id => { const el = $('m_' + id); el.addEventListener('input', calc); el.addEventListener('change', calc); });
+  calc();
+})();
+
+/* ================= 标签 3：提前还款 ================= */
+(function initPrepay(){
+  let method = 'equal_installment', strategy = 'reduce_payment';
+  bindSeg('p_method', v => { method = v; calc(); });
+  bindSeg('p_strategy', v => { strategy = v; calc(); });
+
+  function calc(){
+    const principal = N('p_principal');
+    const months = Math.max(1, Math.round(N('p_years') * 12));
+    const paid = Math.max(0, Math.round(N('p_paid')));
+    const r = FIN.prepayAnalysis({ principal, annualRate: N('p_rate'), months, method,
+                                   paidPeriods: paid, prepayAmount: N('p_prepay'), strategy });
+    const penalty = N('p_penalty');
+    const netSaving = FIN.round2(r.savedInterest - penalty);
+
+    if (!principal || paid >= months) {
+      $('p_summary').innerHTML = LoanUI.cardsHtml(
+        [{ k: '提示', v: paid >= months ? '已还完，无需测算' : '请输入贷款总额' }]);
+      $('p_oldBox').innerHTML = ''; $('p_newBox').innerHTML = '';
+      $('p_yearTable').innerHTML = ''; $('p_note').textContent = '';
+      return;
+    }
+
+    $('p_summary').innerHTML = LoanUI.cardsHtml([
+      { k: '已还期数', v: paid + ' 期' },
+      { k: '提前还款前剩余本金', v: FIN.money(r.balanceBefore) },
+      { k: '提前还款后剩余本金', v: FIN.money(r.balanceAfter) },
+      { k: '节省利息', v: FIN.money(r.savedInterest), cls: 'main good' },
+      { k: '扣除违约金后净省', v: FIN.money(netSaving), cls: netSaving > 0 ? 'good' : '' },
+      strategy === 'shorten_term'
+        ? { k: '提前还完', v: r.savedMonths + ' 期（约 ' + (r.savedMonths / 12).toFixed(1) + ' 年）' }
+        : { k: '新月供', v: FIN.money(r.newMonthly) },
+    ]);
+
+    $('p_oldBox').innerHTML = `<h3>不提前还款</h3>
+      <div class="kv"><span>原月供</span><b>${FIN.money(r.oldMonthly)}</b></div>
+      <div class="kv"><span>剩余期数</span><b>${r.oldRemainingMonths} 期</b></div>
+      <div class="kv"><span>剩余利息</span><b>${FIN.money(r.oldRemainingInterest)}</b></div>
+      <div class="kv"><span>剩余还款合计</span><b>${FIN.money(r.oldRemainingPayment)}</b></div>
+      <div class="kv" style="border-top:1px solid var(--line); margin-top:6px; padding-top:8px">
+        <span>连本带息总支出</span><b>${FIN.money(r.oldTotalOutlay)}</b></div>`;
+
+    const newMonthlyText = strategy === 'shorten_term' ? `${FIN.money(r.newMonthly)}（不变）` : FIN.money(r.newMonthly);
+    $('p_newBox').innerHTML = `<h3>提前还 ${FIN.money(r.prepay)} 元后</h3>
+      <div class="kv"><span>新月供</span><b>${newMonthlyText}</b></div>
+      <div class="kv"><span>剩余期数</span><b>${r.newRemainingMonths} 期</b></div>
+      <div class="kv"><span>剩余利息</span><b>${FIN.money(r.newRemainingInterest)}</b></div>
+      <div class="kv"><span>剩余还款合计</span><b>${FIN.money(r.newRemainingPayment)}</b></div>
+      <div class="kv" style="border-top:1px solid var(--line); margin-top:6px; padding-top:8px">
+        <span>连本带息总支出</span><b>${FIN.money(r.newTotalOutlay)}</b></div>`;
+
+    $('p_note').innerHTML = `提前还 <b>${FIN.money(r.prepay)}</b> 元，采用「${strategy === 'shorten_term' ? '缩短期限' : '减少月供'}」`
+      + `可少付利息 <b>${FIN.money(r.savedInterest)}</b> 元`
+      + (r.savedMonths > 0 ? `，并提前 ${r.savedMonths} 期（约 ${(r.savedMonths / 12).toFixed(1)} 年）还完` : '')
+      + (penalty > 0 ? `；扣除违约金 ${FIN.money(penalty)} 元后净省 ${FIN.money(netSaving)} 元` : '') + '。';
+
+    $('p_yearTable').innerHTML = r.newByYear.length
+      ? LoanUI.yearTableRowsHtml(r.newByYear)
+      : '<div class="hint">提前还款后已结清。</div>';
+  }
+
+  ['principal','rate','years','paid','prepay','penalty']
+    .forEach(id => { const el = $('p_' + id); el.addEventListener('input', calc); el.addEventListener('change', calc); });
+  calc();
+})();
+
+/* ================= 标签 4：车贷 ================= */
+(function initCarLoan(){
+  let method = 'equal_installment';
+  bindSeg('c_method', v => { method = v; calc(); });
+  $('c_quickMonths').querySelectorAll('button').forEach(btn => {
+    btn.onclick = () => {
+      $('c_months').value = btn.getAttribute('data-m');
+      $('c_quickMonths').querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
+      calc();
+    };
+  });
+
+  function calc(){
+    const price = N('c_price');
+    const downPct = Math.min(100, Math.max(0, N('c_downPct')));
+    const down = FIN.round2(price * downPct / 100);
+    const principal = FIN.round2(price - down);
+    const rate = N('c_rate');
+    const months = Math.max(1, Math.round(N('c_months')));
+    const fee = N('c_fee');
+    const purchaseTax = $('c_purchaseTax').checked ? FIN.round2(price / 1.13 * 0.10) : 0;
+    const other = N('c_other');
+    const upfront = FIN.round2(down + purchaseTax + other + fee);
+
+    const res = FIN.amortize({ principal, annualRate: rate, months, method });
+    if (!principal) {
+      $('c_summary').innerHTML = LoanUI.cardsHtml([{ k: '提示', v: '请输入车辆价格' }]);
+      $('c_irrCards').innerHTML = ''; $('c_irrNote').innerHTML = '';
+      $('c_yearTable').innerHTML = ''; $('c_scheduleTable').innerHTML = '';
+      $('c_headline').textContent = '';
+      return;
+    }
+
+    const totalCost = FIN.round2(upfront + res.totalPayment);
+    $('c_summary').innerHTML = LoanUI.cardsHtml([
+      { k: '首付', v: FIN.money(down) },
+      { k: '贷款金额', v: FIN.money(principal) },
+      { k: method === 'equal_installment' ? '每月月供' : '首月月供',
+        v: FIN.money(method === 'equal_installment' ? res.monthly : res.firstPayment), cls: 'main' },
+      { k: '利息总额', v: FIN.money(res.totalInterest) },
+      { k: '前期费用合计', v: FIN.money(upfront) },
+      { k: '落地总花费', v: FIN.money(totalCost), cls: 'good' },
+    ]);
+
+    $('c_headline').innerHTML = `车价 <b>${FIN.money(price)}</b> 元，首付 ${downPct}%，贷款 <b>${FIN.money(principal)}</b> 元、`
+      + `${months} 期、合同年利率 ${rate}%（${method === 'equal_installment' ? '等额本息' : '等额本金'}）：`
+      + `利息合计 <b>${FIN.money(res.totalInterest)}</b> 元。`
+      + (purchaseTax ? `购置税约 ${FIN.money(purchaseTax)} 元。` : '')
+      + `前期一次性支出约 ${FIN.money(upfront)} 元，含利息的落地总花费约 <b>${FIN.money(totalCost)}</b> 元。`;
+
+    const irr = FIN.irr({ amount: principal,
+      payment: method === 'equal_installment' ? res.monthly : res.firstPayment, months, upfrontFee: fee });
+    if (!irr.ok) {
+      $('c_irrCards').innerHTML = LoanUI.cardsHtml([{ k: '无法计算', v: '还款总额低于本金，请检查输入' }]);
+      $('c_irrNote').innerHTML = '';
+    } else {
+      $('c_irrCards').innerHTML = LoanUI.cardsHtml([
+        { k: '合同年利率', v: rate.toFixed(2) + '%' },
+        { k: '真实名义年化', v: irr.nominalAnnual.toFixed(2) + '%', cls: 'main' },
+        { k: '真实有效年化（按月复利）', v: irr.effectiveAnnual.toFixed(2) + '%' },
+        { k: '利息 + 手续费合计', v: FIN.money(FIN.round2(res.totalInterest + fee)) },
+      ]);
+      $('c_irrNote').innerHTML = fee > 0
+        ? `<div class="warnbox">收到 <b>${FIN.money(fee)}</b> 元前置费用后，真实名义年化从合同的 ${rate.toFixed(2)}% `
+          + `升到 <b>${irr.nominalAnnual.toFixed(2)}%</b>（高 ${(irr.nominalAnnual - rate).toFixed(2)} 个百分点），`
+          + `按月复利折算的有效年化是 ${irr.effectiveAnnual.toFixed(2)}%。这笔钱的实际资金成本比合同利率高得多。</div>`
+        : `<p class="note" style="margin:0">没有填前置费用时，真实年化就等于合同利率（可用来交叉验证算法）。
+           如果销售说「利率 4.5%」但另外收了服务费，把服务费填上去看看会变成多少。</p>`;
+    }
+
+    $('c_yearTable').innerHTML = LoanUI.yearTableHtml(res);
+    $('c_scheduleTable').innerHTML = LoanUI.scheduleTableHtml(res, '期');
+    $('c_periodCount').textContent = res.schedule.length;
+  }
+
+  ['price','downPct','rate','months','other','fee','purchaseTax']
+    .forEach(id => { const el = $('c_' + id); el.addEventListener('input', calc); el.addEventListener('change', calc); });
+  calc();
+})();
+
+/* ================= 标签 5：增值税换算 ================= */
+(function initVat(){
+  const RATES = [
+    { v: 13, label: '13% · 一般货物、加工修理修配', use: '一般货物、加工修理修配' },
+    { v: 9,  label: '9% · 交通运输、不动产、农产品', use: '交通运输、不动产、农产品' },
+    { v: 6,  label: '6% · 现代服务、金融服务', use: '现代服务、金融服务' },
+    { v: 5,  label: '5% · 简易计税（不动产等）', use: '简易计税（不动产等）' },
+    { v: 3,  label: '3% · 小规模纳税人', use: '小规模纳税人' },
+    { v: 1,  label: '1% · 小规模优惠（阶段性）', use: '小规模优惠（阶段性）' },
+    { v: -1, label: '自定义', use: '' },
+  ];
+  let mode = 'incl';
+  bindSeg('v_mode', v => { mode = v; update(); });
+
+  function currentRate(){
+    const v = parseFloat($('v_rate').value);
+    return v === -1 ? (parseFloat($('v_customRate').value) || 0) : v;
+  }
+  function vatCalc(amount, ratePercent, isInclusive){
+    const r = ratePercent / 100;
+    if (isInclusive) { const excl = amount / (1 + r); return { excl, tax: excl * r, incl: amount }; }
+    const tax = amount * r;
+    return { excl: amount, tax, incl: amount + tax };
+  }
+  function update(){
+    const amount = parseFloat($('v_amount').value);
+    const rate = currentRate();
+    $('v_customWrap').style.display = (parseFloat($('v_rate').value) === -1) ? '' : 'none';
+    if (!isFinite(amount) || amount < 0) {
+      $('v_excl').textContent = $('v_tax').textContent = $('v_incl').textContent = '—';
+      $('v_check').textContent = '';
+      return;
+    }
+    const res = vatCalc(amount, rate, mode === 'incl');
+    $('v_excl').textContent = FIN.money(res.excl);
+    $('v_tax').textContent = FIN.money(res.tax);
+    $('v_incl').textContent = FIN.money(res.incl);
+    const back = Math.round((res.excl + res.tax) * 100) / 100;
+    const same = Math.abs(back - Math.round(res.incl * 100) / 100) < 0.005;
+    $('v_check').innerHTML = same
+      ? `校验：不含税 ${FIN.money(res.excl)} + 税额 ${FIN.money(res.tax)} = 含税 ${FIN.money(res.incl)} ✅`
+      : `校验：取整后相差 ${FIN.money(Math.abs(back - res.incl))} 元（整单计算与逐行取整的差异）`;
+  }
+  $('v_rate').innerHTML = RATES.map(r => `<option value="${r.v}">${r.label}</option>`).join('');
+  $('v_rate').value = '13';
+  $('v_rateTable').innerHTML = RATES.filter(r => r.v > 0).map(r => {
+    const res = vatCalc(1000, r.v, true);
+    return `<tr><td>${r.v}%</td><td>${r.use}</td>
+      <td class="num">${FIN.money(res.excl)} / ${FIN.money(res.tax)}</td></tr>`;
+  }).join('');
+  ['v_amount','v_rate','v_customRate'].forEach(id => {
+    $(id).addEventListener('input', update); $(id).addEventListener('change', update);
+  });
+  $('v_copy').onclick = async () => {
+    const amount = parseFloat($('v_amount').value);
+    if (!isFinite(amount)) return;
+    const res = vatCalc(amount, currentRate(), mode === 'incl');
+    const text = `含税金额：${FIN.money(res.incl)} 元\n不含税金额：${FIN.money(res.excl)} 元\n`
+      + `税额：${FIN.money(res.tax)} 元\n税率：${currentRate()}%`;
+    try { await navigator.clipboard.writeText(text); $('v_copyHint').textContent = '已复制到剪贴板'; }
+    catch (e) { $('v_copyHint').textContent = '复制失败，请手动选中'; }
+    setTimeout(() => { $('v_copyHint').textContent = ''; }, 2500);
+  };
+  update();
+})();
+
+/* ---------------- 用 hash 记住当前标签 ---------------- */
+const initial = (location.hash || '').replace(/^#\/?/, '');
+const valid = ['salary','mortgage','prepay','carloan','vat'];
+showTab(valid.includes(initial) ? initial : 'salary');
+</script>
+</body>
+</html>
