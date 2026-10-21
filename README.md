@@ -437,6 +437,9 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 
 ## 六、目录结构
 
+每个子目录（`xhs/`、`static/`、`static/tools/`、`static/tools/_shared/`、`tools/`）下也有一个 README，
+进入该目录即可看到该目录里每个文件的作用。下面是根目录的完整清单。
+
 ### 根目录
 
 | 文件 | 作用 |
