@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>小红书视频转笔记</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#fff; --ink:#1b1d21; --muted:#6b7280; --line:#e6e8ec;
+    --accent:#ff2d55; --accent-dark:#e01f45; --ok:#12a150; --warn:#c98200; --err:#d92d20;
+    --radius:14px; --shadow:0 1px 2px rgba(16,24,40,.05), 0 8px 24px rgba(16,24,40,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink); min-height:100vh;
+    font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,-apple-system,sans-serif;
+    font-size:14px; line-height:1.6;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:28px 20px 80px}
+  header.top{display:flex; align-items:center; gap:12px; margin-bottom:22px}
+  .logo{
+    width:38px;height:38px;border-radius:11px;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;
+  }
+  header.top h1{font-size:19px;margin:0;font-weight:650;letter-spacing:.2px}
+  header.top .sub{color:var(--muted);font-size:12.5px;margin-top:1px}
+  .grow{flex:1}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:16px}
+  .card h2{font-size:14.5px;margin:0 0 12px;font-weight:650}
+  textarea{
+    width:100%;min-height:104px;resize:vertical;padding:12px 13px;border:1px solid var(--line);
+    border-radius:10px;font-family:inherit;font-size:13.5px;line-height:1.65;background:#fcfcfd;color:var(--ink);
+  }
+  textarea:focus,input:focus,select:focus{outline:2px solid rgba(255,45,85,.18);border-color:var(--accent)}
+  input,select{
+    width:100%;padding:8px 11px;border:1px solid var(--line);border-radius:9px;
+    font-family:inherit;font-size:13px;background:#fff;color:var(--ink);
+  }
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .row.between{justify-content:space-between}
+  button{
+    font-family:inherit;font-size:13.5px;font-weight:550;padding:9px 16px;border-radius:9px;
+    border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;transition:.15s;
+  }
+  button:hover{background:#f3f4f6}
+  button:disabled{opacity:.55;cursor:not-allowed}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.primary:hover{background:var(--accent-dark)}
+  button.sm{padding:5px 11px;font-size:12.5px;border-radius:7px}
+  button.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+  button.ghost:hover{background:#f3f4f6;color:var(--ink)}
+  .hint{color:var(--muted);font-size:12.5px}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;background:#f1f2f5;color:var(--muted)}
+  .pill.ok{background:#e7f7ee;color:var(--ok)}
+  .pill.bad{background:#fdecea;color:var(--err)}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  /* 进度 */
+  .steps{display:flex;gap:6px;margin:4px 0 14px;flex-wrap:wrap}
+  .step{flex:1;min-width:88px;font-size:11.5px;color:var(--muted);text-align:center;padding:6px 4px;border-radius:8px;background:#f4f5f7;border:1px solid transparent}
+  .step.active{background:#fff0f3;border-color:#ffd0d9;color:var(--accent-dark);font-weight:600}
+  .step.done{background:#e7f7ee;color:var(--ok)}
+  .bar{height:8px;background:#eef0f3;border-radius:999px;overflow:hidden}
+  .bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),#ff7a90);transition:width .35s ease}
+  .pct{font-variant-numeric:tabular-nums;font-weight:650;font-size:15px}
+  .log{
+    margin-top:12px;max-height:210px;overflow:auto;background:#1c1f26;color:#d7dae0;border-radius:10px;
+    padding:10px 12px;font-family:"Cascadia Mono",Consolas,"Courier New",monospace;font-size:12px;line-height:1.7;
+  }
+  .log div{white-space:pre-wrap;word-break:break-all}
+  .log .t{color:#7d8697;margin-right:8px}
+  .log .e{color:#ff8a80}
+  .log .s{color:#7fd1a8}
+  /* 结果 */
+  .item{border:1px solid var(--line);border-radius:11px;padding:13px 14px;margin-bottom:10px;background:#fcfcfd}
+  .item h3{margin:0 0 6px;font-size:14px;font-weight:620}
+  .item .meta{color:var(--muted);font-size:12.5px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .item .path{font-family:Consolas,monospace;font-size:11.5px;color:#8a90a0;word-break:break-all;margin-top:6px}
+  .item .err{color:var(--err);font-size:12.5px;margin-top:6px;white-space:pre-wrap}
+  .item .warn{color:var(--warn);font-size:12.5px;margin-top:6px;white-space:pre-wrap}
+  .filelist{max-height:260px;overflow:auto}
+  .filelist .f{display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px dashed var(--line);font-size:13px}
+  .filelist .f:last-child{border-bottom:none}
+  .filelist .n{flex:1;word-break:break-all}
+  .filelist .d{color:var(--muted);font-size:12px;white-space:nowrap}
+  /* 设置抽屉 */
+  .overlay{position:fixed;inset:0;background:rgba(16,24,40,.35);opacity:0;pointer-events:none;transition:.2s;z-index:40}
+  .overlay.show{opacity:1;pointer-events:auto}
+  .drawer{
+    position:fixed;top:0;right:0;height:100%;width:min(480px,94vw);background:#fff;z-index:50;
+    transform:translateX(102%);transition:transform .25s ease;overflow-y:auto;box-shadow:-8px 0 30px rgba(16,24,40,.12);
+  }
+  .drawer.show{transform:translateX(0)}
+  .drawer .head{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);padding:16px 18px;display:flex;align-items:center;gap:10px;z-index:2}
+  .drawer .body{padding:18px}
+  .field{margin-bottom:15px}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+  .field .desc{color:var(--muted);font-size:12px;margin-top:5px;line-height:1.55}
+  .field .desc a{color:var(--accent-dark)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .switch{display:flex;align-items:center;gap:8px;font-size:13px}
+  .switch input{width:auto}
+  hr.sep{border:none;border-top:1px solid var(--line);margin:18px 0}
+  .toast{
+    position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);opacity:0;
+    background:#1c1f26;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:60;transition:.25s;max-width:80vw;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .modal{position:fixed;inset:0;background:rgba(16,24,40,.4);display:none;align-items:center;justify-content:center;z-index:70;padding:24px}
+  .modal.show{display:flex}
+  .modal .box{background:#fff;border-radius:14px;max-width:820px;width:100%;max-height:86vh;display:flex;flex-direction:column;overflow:hidden}
+  .modal .box header{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .modal pre{margin:0;padding:18px;overflow:auto;font-size:13px;line-height:1.75;white-space:pre-wrap;word-break:break-word;font-family:"Cascadia Mono",Consolas,monospace}
+  .muted-box{background:#f8f9fb;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">小</div>
+    <div>
+      <h1>小红书视频转笔记</h1>
+      <div class="sub">粘贴分享链接 → 下载转写 → AI 总结 → 生成 markdown</div>
+    </div>
+    <div class="grow"></div>
+    <span id="depPill" class="pill"><i class="dot"></i><span>检查环境…</span></span>
+    <button class="sm" id="btnSettings">设置</button>
+  </header>
+
+  <div class="card">
+    <h2>1. 粘贴链接</h2>
+    <textarea id="links" placeholder="把小红书 App 的分享链接粘到这里，一行一条（分享文案整段粘贴也行，会自动识别链接）&#10;例如：https://xhslink.com/a/xxxxxxx"></textarea>
+    <div class="row between" style="margin-top:12px">
+      <span class="hint" id="keyHint">正在读取配置…</span>
+      <div class="row">
+        <button class="ghost sm" id="btnClear">清空</button>
+        <button class="primary" id="btnStart">开始生成</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="progressCard" style="display:none">
+    <div class="row between" style="margin-bottom:10px">
+      <h2 style="margin:0" id="stageText">准备中…</h2>
+      <span class="pct" id="pctText">0%</span>
+    </div>
+    <div class="steps" id="steps"></div>
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none">
+    <h2>2. 生成结果</h2>
+    <div id="items"></div>
+  </div>
+
+  <div class="card">
+    <div class="row between" style="margin-bottom:10px">
+      <h2 style="margin:0">已生成的笔记</h2>
+      <div class="row">
+        <span class="hint" id="outDirText"></span>
+        <button class="sm" id="btnOpenFolder">打开文件夹</button>
+        <button class="sm" id="btnRefresh">刷新</button>
+      </div>
+    </div>
+    <div class="filelist" id="fileList"><div class="hint">加载中…</div></div>
+  </div>
+</div>
+
+<!-- 设置 -->
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="drawer">
+  <div class="head">
+    <strong style="flex:1">设置</strong>
+    <button class="sm" id="btnCloseDrawer">关闭</button>
+  </div>
+  <div class="body">
+    <div class="muted-box">
+      API key 保存在本机 <code>config.json</code> 里（明文）。也可以用环境变量代替，避免落盘。
+    </div>
+
+    <hr class="sep" />
+    <h2 style="font-size:14px;margin:0 0 12px">语音转写</h2>
+    <div class="field">
+      <label>厂商</label>
+      <select id="asrProvider"></select>
+      <div class="desc" id="asrNote"></div>
+    </div>
+    <div class="field">
+      <label>API key</label>
+      <input id="asrKey" type="password" placeholder="留空表示不修改" autocomplete="off" />
+      <div class="desc" id="asrKeyDesc"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>模型</label><input id="asrModel" placeholder="用厂商默认" /></div>
+      <div class="field"><label>切片时长（秒）</label><input id="asrSegment" type="number" min="60" step="30" /></div>
+    </div>
+    <div class="field"><label>接口地址 base_url</label><input id="asrBase" placeholder="用厂商默认" /></div>
+    <div class="row"><button class="sm" id="btnTestAsr">测试转写</button><span class="hint" id="asrTestResult"></span></div>
+
+    <hr class="sep" />
+    <h2 style="font-size:14px;margin:0 0 12px">内容总结</h2>
+    <div class="field">
+      <label>模型</label>
+      <select id="llmProvider"></select>
+      <div class="desc" id="llmNote"></div>
+    </div>
+    <div class="field">
+      <label>API key</label>
+      <input id="llmKey" type="password" placeholder="留空表示不修改" autocomplete="off" />
+      <div class="desc" id="llmKeyDesc"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>模型名</label><input id="llmModel" placeholder="用厂商默认" /></div>
+      <div class="field"><label>温度</label><input id="llmTemp" type="number" min="0" max="1.5" step="0.1" /></div>
+    </div>
+    <div class="field"><label>接口地址 base_url</label><input id="llmBase" placeholder="用厂商默认" /></div>
+    <div class="row"><button class="sm" id="btnTestLlm">测试总结</button><span class="hint" id="llmTestResult"></span></div>
+
+    <hr class="sep" />
+    <h2 style="font-size:14px;margin:0 0 12px">下载与输出</h2>
+    <div class="field">
+      <label>浏览器 Cookie 来源</label>
+      <select id="cookieBrowser">
+        <option value="">不使用（部分公开笔记仍可下载）</option>
+        <option value="edge">Microsoft Edge</option>
+        <option value="chrome">Google Chrome</option>
+        <option value="firefox">Firefox</option>
+      </select>
+      <div class="desc">小红书要求登录时，选成你已登录小红书的浏览器，<b>并把该浏览器完全关闭</b>再重试。</div>
+    </div>
+    <div class="field"><label>输出目录</label><input id="outputDir" placeholder="output" /></div>
+    <div class="field">
+      <label>下载代理（可选）</label>
+      <input id="downloadProxy" placeholder="例如 http://127.0.0.1:7890，留空表示直连" />
+      <div class="desc">留空且不开下面的开关时，下载一律直连。小红书是国内站点，直连通常最稳。</div>
+    </div>
+    <div class="field">
+      <label class="switch"><input type="checkbox" id="useSystemProxy" /> 下载时使用系统代理</label>
+      <div class="desc">本机检测到系统代理时才会生效；走海外节点容易被小红书风控拦截。</div>
+    </div>
+    <div class="field"><label>额外总结要求（可选）</label><input id="extraInstruction" placeholder="例如：重点整理成可执行的步骤清单" /></div>
+    <div class="field"><label class="switch"><input type="checkbox" id="includeTranscript" /> 在 md 末尾附上完整逐字稿（折叠）</label></div>
+    <div class="field">
+      <label class="switch"><input type="checkbox" id="useNoteText" /> 把作者正文当「专有名词参考」喂给模型</label>
+      <div class="desc">只用于纠正项目名、软件名的写法，<b>不会写进文档</b>；关掉后模型只看视频转写内容。</div>
+    </div>
+    <div class="field">
+      <label class="switch"><input type="checkbox" id="includeFrontMatter" /> 在文档开头输出 YAML 元数据块</label>
+      <div class="desc">默认关闭（文档直接从标题开始）。打开后会写出来源、作者、模型、字数等字段，便于脚本检索。</div>
+    </div>
+    <div class="field"><label class="switch"><input type="checkbox" id="keepMedia" /> 保留下载的原始视频（默认处理完就删）</label></div>
+
+    <hr class="sep" />
+    <h2 style="font-size:14px;margin:0 0 12px">工具与 GitHub 链接</h2>
+    <div class="field">
+      <label class="switch"><input type="checkbox" id="githubEnabled" /> 自动给提到的工具匹配 GitHub 仓库</label>
+      <div class="desc">只会写入「接口验证过确实存在」的地址；同名小仓库会被剔除，搜不到就写「未找到」，
+        绝不编造链接。未填 token 时每小时限 60 次查询，日常够用。</div>
+    </div>
+    <div class="field">
+      <label>GitHub Token（可选）</label>
+      <input id="githubToken" type="password" placeholder="留空表示不修改" autocomplete="off" />
+      <div class="desc" id="githubTokenDesc"></div>
+    </div>
+
+    <div class="row" style="margin-top:18px">
+      <button class="primary" id="btnSave">保存设置</button>
+      <span class="hint" id="saveResult"></span>
+    </div>
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal">
+  <div class="box">
+    <header><strong id="modalTitle" style="flex:1">内容预览</strong>
+      <button class="sm" id="modalClose">关闭</button></header>
+    <pre id="modalBody"></pre>
+  </div>
+</div>
+
+<script>
+const STAGES = ["解析链接","下载媒体","提取音频","语音转写","生成总结","写入文件"];
+const $ = (id) => document.getElementById(id);
+let presets = {asr:{}, llm:{}}, currentJobId = null, source = null, loadedConfig = null;
+
+function toast(msg, ms = 2600){
+  const el = $("toast"); el.textContent = msg; el.classList.add("show");
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("show"), ms);
+}
+async function api(path, options){
+  const res = await fetch(path, options);
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch(e){ data = {detail:text}; }
+  if(!res.ok){
+    const detail = (data && (data.detail || data.error)) || ("HTTP " + res.status);
+    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+  }
+  return data;
+}
+
+/* ---------------------------------------------------------------- 配置 */
+async function loadConfig(){
+  const data = await api("/api/config");
+  presets = {asr:data.asr_presets, llm:data.summarizer_presets};
+  loadedConfig = data.config;
+  $("outDirText").textContent = data.output_dir;
+
+  const dep = data.deps || {};
+  const pill = $("depPill");
+  if(dep.ready){
+    pill.className = "pill ok";
+    pill.innerHTML = '<i class="dot"></i><span>环境就绪</span>';
+  } else {
+    pill.className = "pill bad";
+    pill.innerHTML = '<i class="dot"></i><span>' + (dep.yt_dlp ? "" : "缺 yt-dlp ") + (dep.ffmpeg ? "" : "缺 ffmpeg") + '</span>';
+  }
+
+  const asrSel = $("asrProvider");
+  asrSel.innerHTML = Object.entries(presets.asr).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join("");
+  const llmSel = $("llmProvider");
+  llmSel.innerHTML = Object.entries(presets.llm).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join("");
+
+  const c = data.config;
+  asrSel.value = c.asr.provider;
+  llmSel.value = c.summarizer.provider;
+  $("asrModel").value = c.asr.model || "";
+  $("asrBase").value = c.asr.base_url || "";
+  $("asrSegment").value = c.asr.segment_seconds || 600;
+  $("llmModel").value = c.summarizer.model || "";
+  $("llmBase").value = c.summarizer.base_url || "";
+  $("llmTemp").value = c.summarizer.temperature ?? 0.3;
+  $("cookieBrowser").value = c.download.cookies_from_browser || "";
+  $("downloadProxy").value = c.download.proxy || "";
+  $("useSystemProxy").checked = !!(c.download && c.download.use_system_proxy);
+  $("outputDir").value = c.output_dir || "output";
+  $("extraInstruction").value = (c.summary && c.summary.extra_instruction) || "";
+  $("includeTranscript").checked = !!(c.summary && c.summary.include_transcript);
+  $("useNoteText").checked = !(c.summary && c.summary.use_note_text === false);
+  $("includeFrontMatter").checked = !!(c.summary && c.summary.include_front_matter);
+  $("keepMedia").checked = !!(c.download && c.download.keep_media);
+  $("githubEnabled").checked = !(c.github && c.github.enabled === false);
+  const gh = c.github || {};
+  $("githubTokenDesc").textContent = gh.token_set
+    ? `已保存：${gh.token_masked}（重新填写会覆盖）`
+    : (gh.env_token_set ? "未在页面保存，但检测到环境变量 GITHUB_TOKEN" : "未设置（未认证查询每小时 60 次，通常够用）");
+  renderProviderHints();
+  renderKeyHint();
+}
+function renderProviderHints(){
+  const a = presets.asr[$("asrProvider").value] || {};
+  $("asrNote").innerHTML = (a.note || "") + (a.key_url ? ` 申请地址：<a href="${a.key_url}" target="_blank" rel="noreferrer">${a.key_url}</a>` : "");
+  const l = presets.llm[$("llmProvider").value] || {};
+  $("llmNote").innerHTML = (l.note || "") + (l.key_url ? ` 申请地址：<a href="${l.key_url}" target="_blank" rel="noreferrer">${l.key_url}</a>` : "");
+  const cfg = loadedConfig || {asr:{},summarizer:{}};
+  $("asrKeyDesc").textContent = cfg.asr.api_key_set
+    ? `已保存：${cfg.asr.api_key_masked}（重新填写会覆盖）`
+    : (cfg.asr.env_key_set ? `未在页面保存，但检测到环境变量 ${cfg.asr.key_env}` : "还没有配置 key");
+  $("llmKeyDesc").textContent = cfg.summarizer.api_key_set
+    ? `已保存：${cfg.summarizer.api_key_masked}（重新填写会覆盖）`
+    : (cfg.summarizer.env_key_set ? `未在页面保存，但检测到环境变量 ${cfg.summarizer.key_env}` : "还没有配置 key");
+}
+function renderKeyHint(){
+  const c = loadedConfig; if(!c) return;
+  const okAsr = c.asr.api_key_set || c.asr.env_key_set;
+  const okLlm = c.summarizer.api_key_set || c.summarizer.env_key_set;
+  const parts = [];
+  parts.push(okAsr ? "转写已配置" : "⚠ 转写未配置 key");
+  parts.push(okLlm ? "总结已配置" : "⚠ 总结未配置 key");
+  $("keyHint").textContent = parts.join(" ｜ ");
+}
+async function saveConfig(){
+  const patch = {
+    output_dir: $("outputDir").value.trim() || "output",
+    asr: {
+      provider: $("asrProvider").value,
+      model: $("asrModel").value.trim(),
+      base_url: $("asrBase").value.trim(),
+      segment_seconds: parseInt($("asrSegment").value || "600", 10),
+      api_key: $("asrKey").value.trim()
+    },
+    summarizer: {
+      provider: $("llmProvider").value,
+      model: $("llmModel").value.trim(),
+      base_url: $("llmBase").value.trim(),
+      temperature: parseFloat($("llmTemp").value || "0.3"),
+      api_key: $("llmKey").value.trim()
+    },
+    download: {
+      cookies_from_browser: $("cookieBrowser").value,
+      proxy: $("downloadProxy").value.trim(),
+      use_system_proxy: $("useSystemProxy").checked,
+      keep_media: $("keepMedia").checked
+    },
+    summary: {
+      extra_instruction: $("extraInstruction").value.trim(),
+      include_transcript: $("includeTranscript").checked,
+      use_note_text: $("useNoteText").checked,
+      include_front_matter: $("includeFrontMatter").checked
+    },
+    github: {
+      enabled: $("githubEnabled").checked,
+      token: $("githubToken").value.trim()
+    }
+  };
+  $("saveResult").textContent = "保存中…";
+  try{
+    const res = await api("/api/config", {
+      method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(patch)
+    });
+    loadedConfig = res.config;
+    $("asrKey").value = ""; $("llmKey").value = "";
+    $("saveResult").textContent = "已保存";
+    renderProviderHints(); renderKeyHint();
+    toast("设置已保存");
+    loadFiles();
+  } catch(e){
+    $("saveResult").textContent = "";
+    toast("保存失败：" + e.message, 5000);
+  }
+}
+async function selftest(target){
+  const out = target === "asr" ? $("asrTestResult") : $("llmTestResult");
+  out.textContent = "测试中…";
+  try{
+    const res = await api("/api/selftest", {
+      method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({target})
+    });
+    if(res.ok){
+      const r = res.result || {};
+      out.textContent = target === "asr"
+        ? `✓ ${r.provider} / ${r.model} 可用`
+        : `✓ ${r.provider} / ${r.model} 可用，返回：${r.reply || ""}`;
+    } else {
+      out.textContent = "✗ " + res.error;
+    }
+  } catch(e){ out.textContent = "✗ " + e.message; }
+}
+
+/* ---------------------------------------------------------------- 提交与进度 */
+function renderSteps(active){
+  const cur = STAGES.indexOf(active);
+  // 作业结束时 stage 会变成「完成 / 部分完成 / 失败」这类终态词，
+  // 此时没有对应的阶段可高亮，就直接把所有步骤标成完成态
+  const terminal = ["完成", "部分完成", "失败"].includes(active);
+  $("steps").innerHTML = STAGES.map((s, idx) => {
+    let cls = "";
+    if(terminal) cls = active === "失败" ? "active" : "done";
+    else if(cur >= 0) cls = idx < cur ? "done" : (idx === cur ? "active" : "");
+    return `<div class="step ${cls}">${s}</div>`;
+  }).join("");
+}
+function appendLog(event){
+  const box = $("log");
+  const line = document.createElement("div");
+  const cls = event.kind === "error" ? "e" : (event.kind === "stage" ? "s" : "");
+  line.innerHTML = `<span class="t">${event.ts || ""}</span><span class="${cls}"></span>`;
+  line.lastChild.textContent = event.message || event.stage || "";
+  box.appendChild(line);
+  while(box.childElementCount > 400) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+}
+function itemHtml(it){
+  const statusMap = {done:"已完成", failed:"失败", running:"处理中", pending:"等待中"};
+  const bits = [`<span class="pill ${it.status==="done"?"ok":(it.status==="failed"?"bad":"")}">${statusMap[it.status]||it.status}</span>`];
+  if(it.content_type) bits.push(it.content_type);
+  if(it.topic_kind) bits.push(`<span class="pill">${escapeHtml(it.topic_kind)}</span>`);
+  if(it.duration) bits.push(Math.round(it.duration) + " 秒");
+  if(it.transcript_chars) bits.push(it.transcript_chars + " 字");
+  // 工具名单独显示成标签，这是这份笔记最想让人看到的信息
+  if(it.tools && it.tools.length){
+    bits.push(`<span style="color:#8a90a0">工具</span>`);
+    it.tools.forEach(t => bits.push(`<span class="pill ok">${escapeHtml(t)}</span>`));
+  }
+  let html = `<div class="item"><h3>${escapeHtml(it.title || it.url)}</h3><div class="meta">${bits.join("")}</div>`;
+  if(it.output_path) html += `<div class="path">${escapeHtml(it.output_path)}</div>`;
+  if(it.warning) html += `<div class="warn">⚠ ${escapeHtml(it.warning)}</div>`;
+  if(it.error) html += `<div class="err">${escapeHtml(it.error)}</div>`;
+  if(it.file_name){
+    html += `<div class="row" style="margin-top:9px">
+      <button class="sm" data-view="${escapeHtml(it.file_name)}">查看内容</button>
+      <a class="sm" style="text-decoration:none" href="/api/files/${encodeURIComponent(it.file_name)}/download"><button class="sm">下载 md</button></a>
+    </div>`;
+  }
+  return html + "</div>";
+}
+function escapeHtml(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+function renderItems(items){
+  $("resultCard").style.display = "";
+  $("items").innerHTML = items.map(itemHtml).join("");
+  $("items").querySelectorAll("[data-view]").forEach(btn => {
+    btn.onclick = () => viewFile(btn.getAttribute("data-view"));
+  });
+}
+async function start(){
+  const raw = $("links").value;
+  if(!raw.trim()){ toast("先粘贴至少一条链接"); return; }
+  $("btnStart").disabled = true;
+  $("log").innerHTML = "";
+  $("progressCard").style.display = "";
+  $("resultCard").style.display = "none";
+  renderSteps("");
+  try{
+    const res = await api("/api/jobs", {
+      method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({links: raw})
+    });
+    currentJobId = res.job_id;
+    toast(`已提交 ${res.count} 条链接`);
+    if(source) source.close();
+    source = new EventSource(`/api/jobs/${currentJobId}/events`);
+    source.onmessage = (ev) => {
+      let data; try{ data = JSON.parse(ev.data); }catch(e){ return; }
+      if(data.progress != null){
+        $("pctText").textContent = data.progress + "%";
+        $("barFill").style.width = data.progress + "%";
+      }
+      if(data.stage){ $("stageText").textContent = data.stage; renderSteps(data.stage); }
+      if(data.message) appendLog(data);
+      if(data.item){
+        const list = $("items").querySelectorAll(".item");
+        // 逐条把结果替换上去，先给出结果卡片再等整批结束
+        const items = Array.from(list);
+        const index = data.item_index || 0;
+        if(items[index]){ items[index].outerHTML = itemHtml(data.item); } else { renderItems([data.item]); }
+        $("resultCard").style.display = "";
+        $("items").querySelectorAll("[data-view]").forEach(b => b.onclick = () => viewFile(b.getAttribute("data-view")));
+      }
+      if(data.kind === "finished"){
+        if(data.items) renderItems(data.items);
+        $("btnStart").disabled = false;
+        source.close(); source = null;
+        loadFiles();
+        toast(data.status === "done" ? "全部完成" : "处理结束，部分失败请看结果卡片", 4200);
+      }
+    };
+    source.onerror = () => {
+      // 作业结束后服务端会主动断开，这里只在异常时解除按钮禁用
+      if(source && source.readyState === EventSource.CLOSED){
+        $("btnStart").disabled = false;
+      }
+    };
+    // 刷新页面后也能恢复：先拉一次快照兜底
+    api(`/api/jobs/${currentJobId}`).then(j => { if(j.items) renderItems(j.items); }).catch(()=>{});
+  } catch(e){
+    $("btnStart").disabled = false;
+    toast("提交失败：" + e.message, 6000);
+    appendLog({ts:"", kind:"error", message:"提交失败：" + e.message});
+  }
+}
+
+/* ---------------------------------------------------------------- 文件 */
+async function loadFiles(){
+  try{
+    const res = await api("/api/files");
+    $("outDirText").textContent = res.output_dir;
+    if(!res.files.length){ $("fileList").innerHTML = '<div class="hint">还没有生成过笔记</div>'; return; }
+    $("fileList").innerHTML = res.files.map(f => `
+      <div class="f">
+        <span class="n">${escapeHtml(f.name)}</span>
+        <span class="d">${(f.size/1024).toFixed(1)} KB</span>
+        <span class="d">${f.modified}</span>
+        <button class="sm" data-view="${escapeHtml(f.name)}">查看</button>
+      </div>`).join("");
+    $("fileList").querySelectorAll("[data-view]").forEach(b => b.onclick = () => viewFile(b.getAttribute("data-view")));
+  } catch(e){ $("fileList").innerHTML = `<div class="hint">读取失败：${escapeHtml(e.message)}</div>`; }
+}
+async function viewFile(name){
+  try{
+    const res = await api("/api/files/" + encodeURIComponent(name));
+    $("modalTitle").textContent = res.name;
+    $("modalBody").textContent = res.content;
+    $("modal").classList.add("show");
+  } catch(e){ toast("读取失败：" + e.message); }
+}
+
+/* ---------------------------------------------------------------- 绑定 */
+$("btnStart").onclick = start;
+$("btnClear").onclick = () => { $("links").value = ""; };
+$("btnRefresh").onclick = loadFiles;
+$("btnOpenFolder").onclick = async () => {
+  try{ await api("/api/open-folder", {method:"POST"}); }catch(e){ toast(e.message); }
+};
+$("btnSettings").onclick = () => { $("drawer").classList.add("show"); $("overlay").classList.add("show"); };
+const closeDrawer = () => { $("drawer").classList.remove("show"); $("overlay").classList.remove("show"); };
+$("btnCloseDrawer").onclick = closeDrawer;
+$("overlay").onclick = closeDrawer;
+$("modalClose").onclick = () => $("modal").classList.remove("show");
+$("modal").onclick = (e) => { if(e.target.id === "modal") $("modal").classList.remove("show"); };
+$("btnSave").onclick = saveConfig;
+$("btnTestAsr").onclick = () => selftest("asr");
+$("btnTestLlm").onclick = () => selftest("llm");
+$("asrProvider").onchange = renderProviderHints;
+$("llmProvider").onchange = renderProviderHints;
+document.addEventListener("keydown", e => { if(e.key === "Escape"){ closeDrawer(); $("modal").classList.remove("show"); } });
+
+loadConfig().catch(e => toast("读取配置失败：" + e.message, 6000));
+loadFiles();
+</script>
+</body>
+</html>

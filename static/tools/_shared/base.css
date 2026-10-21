@@ -1,0 +1,72 @@
+/* 工具箱里各工具共用的基础样式。
+   每个工具页在自己的 <head> 里 <link rel="stylesheet" href="/static/tools/_shared/base.css"> 即可，
+   想改配色只需在自己的 :root 里覆盖变量。 */
+:root{
+  --bg:#f6f7f9; --panel:#fff; --ink:#1b1d21; --muted:#6b7280; --line:#e6e8ec;
+  --accent:#2563eb; --accent-dark:#1d4ed8; --accent-soft:#eff5ff;
+  --ok:#12a150; --warn:#c98200; --err:#d92d20;
+  --radius:12px; --shadow:0 1px 2px rgba(16,24,40,.05), 0 8px 24px rgba(16,24,40,.06);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink); min-height:100vh;
+  font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,-apple-system,sans-serif;
+  font-size:14px; line-height:1.6;
+}
+.wrap{max-width:920px; margin:0 auto; padding:24px 20px 60px}
+header.top{display:flex; align-items:center; gap:12px; margin-bottom:18px}
+header.top .logo{
+  width:38px;height:38px;border-radius:11px;background:var(--accent);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:19px;flex:0 0 auto;
+}
+header.top h1{font-size:18px;margin:0;font-weight:650}
+header.top .sub{color:var(--muted);font-size:12.5px}
+.card{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:18px; margin-bottom:16px;
+}
+.card h2{font-size:14px;margin:0 0 12px;font-weight:650;color:var(--muted)}
+.row{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end}
+.field{flex:1; min-width:150px}
+label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+input[type=number], input[type=text], select{
+  width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:9px;
+  font-family:inherit;font-size:14px;background:#fff;color:var(--ink);
+}
+input[type=number]{font-variant-numeric:tabular-nums}
+input:focus, select:focus{outline:2px solid rgba(37,99,235,.18); border-color:var(--accent)}
+.seg{display:inline-flex; border:1px solid var(--line); border-radius:9px; overflow:hidden}
+.seg button{font-family:inherit;font-size:13px;padding:9px 16px;border:0;background:#fff;cursor:pointer;color:var(--muted)}
+.seg button.on{background:var(--accent-soft); color:var(--accent-dark); font-weight:650}
+.seg button + button{border-left:1px solid var(--line)}
+.results{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px}
+.res{background:#fafbfc; border:1px solid var(--line); border-radius:10px; padding:12px 14px}
+.res .k{font-size:12px; color:var(--muted)}
+.res .v{font-size:21px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:2px; word-break:break-all}
+.res.main{background:var(--accent-soft); border-color:#cfe0ff}
+.res.main .v{color:var(--accent-dark)}
+.res.good .v{color:var(--ok)}
+table{width:100%; border-collapse:collapse; font-size:13px}
+th,td{text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); white-space:nowrap}
+th{color:var(--muted); font-weight:600; font-size:12.5px}
+tr:last-child td{border-bottom:0}
+td.num, th.num{font-variant-numeric:tabular-nums; text-align:right}
+tbody tr:hover{background:#fafbfc}
+button.primary{
+  font-family:inherit;font-size:13.5px;font-weight:550;padding:9px 16px;border-radius:9px;
+  border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;
+}
+button.primary:hover{background:var(--accent-dark)}
+button.ghost{
+  font-family:inherit;font-size:13px;padding:8px 14px;border-radius:9px;
+  border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;
+}
+button.ghost:hover{background:#f3f4f6}
+.hint{color:var(--muted);font-size:12.5px}
+.note{color:var(--muted); font-size:12.5px; line-height:1.7}
+.note code{background:#f1f2f5; padding:1px 5px; border-radius:4px}
+.scroll{max-height:340px; overflow:auto; border:1px solid var(--line); border-radius:10px}
+.scroll table{font-size:12.5px}
+.scroll th{position:sticky; top:0; background:#fff; z-index:1}
+details summary{cursor:pointer; font-size:13px; color:var(--muted); padding:6px 0}
+.warnline{color:var(--warn); font-size:12.5px}
