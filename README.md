@@ -437,53 +437,81 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 
 ## 六、目录结构
 
-```
-xhs-summarizer/
-├─ run.py                 启动本地服务（自动把 _vendor 加进模块搜索路径）
-├─ app.py                 FastAPI 路由：配置、提交作业、SSE 进度、读取结果
-├─ bootstrap_deps.py      把依赖装进项目内的 _vendor/
-├─ config.example.json    配置样例（真实配置是 config.json，含 key，已被 gitignore）
-├─ xhs/
-│  ├─ config.py           默认值 + config.json 覆盖 + 环境变量兜底
-│  ├─ resolve.py          短链跟跳转、抽 note_id、图文正文兜底
-│  ├─ download.py         yt-dlp 封装（代理、cookie、失败降级）
-│  ├─ audio.py            ffmpeg 抽音轨、按时长切片
-│  ├─ asr.py              云端转写（OpenAI 兼容协议 + 百炼协议）
-│  ├─ summarize.py        三步总结：判断内容类型 → 提取素材 → 按类型成文
-│  ├─ github.py           GitHub 仓库核实与搜索匹配（找不到就写「未找到」）
-│  ├─ store.py            文件名清洗、去重、markdown 组装
-│  ├─ english.py          编程英语助手的提示词、长度限制与模型调用
-│  ├─ pronounce.py        Azure / 讯飞发音评测分发
-│  ├─ xunfei.py           讯飞语音评测 WebSocket（HMAC 鉴权）
-│  ├─ keywords.py         多语言关键字：AI 解释 + GitHub API 示例
-│  ├─ jobs.py             作业状态与事件总线
-│  ├─ pipeline.py         把上面几块串成流水线
-│  └─ sandbox.py          临时目录兼容性补丁
-├─ static/
-│  ├─ index.html          工具箱外壳：左侧工具列表 + 右侧工具面板（iframe 隔离）
-│  └─ tools/              每个工具一个页面；放两个文件就等于新增一个工具
-│     ├─ notes.html       小红书视频转笔记
-│     ├─ tax-calc.html    税率计算（工资/个税、房贷、提前还款、车贷、增值税 五个标签页）
-│     ├─ english.html     编程英语（词汇查询 / 口语练习）
-│     ├─ keywords.html    多语言关键字（速查 / AI 解释 / Python API 示例）
-│     ├─ *.meta.json      各工具在列表里的名称 / 说明 / 图标 / 排序
-│     └─ _shared/         多个工具共用的东西（不会被当成工具）
-│        ├─ base.css      基础样式
-│        ├─ finance.js    金融计算：个税、社保、摊还、提前还款、IRR（纯函数，可 node 测试）
-│        ├─ loan-ui.js    房贷 / 车贷 / 提前还款共用的结果渲染
-│        ├─ markdown.js   模型回复用的轻量 Markdown 渲染
-│        ├─ readback.js   跟读匹配：目标句与 ASR 转写的词级对比
-│        ├─ keywords-data.js 多语言关键字本地词库
-│        └─ presets.js    政策参数（成都 2026 年度比例与基数上下限，含来源链接）
-├─ tools/check_finance.js 金融计算的回归测试（node 跑）
-├─ tools/check_readback.js 跟读匹配的回归测试（node 跑）
-├─ tools/check_pronounce.py Azure 发音评测的离线测试（假响应）
-├─ tools/check_xunfei.py   讯飞语音评测的离线测试（假响应）
-├─ tools/selfcheck.py     离线自检
-├─ _vendor/               依赖（自动生成）
-├─ work/                  下载与转码的中间文件（自动生成）
-└─ output/                生成的 markdown（自动生成）
-```
+### 根目录
+
+| 文件 | 作用 |
+|---|---|
+| `.gitignore` | 排除依赖、密钥、运行产物和缓存，避免提交敏感文件 |
+| `README.md` | 项目说明：启动、配置、工具用法、目录结构 |
+| `run.py` | 启动本地服务，自动把 `_vendor` 加进模块搜索路径 |
+| `app.py` | FastAPI 路由：工具页、配置、作业、SSE 进度、结果文件 |
+| `bootstrap_deps.py` | 按本机 Python 下载 wheel 并解压到 `_vendor/` |
+| `requirements.txt` | 依赖版本参考（常规 pip 安装时使用） |
+| `config.example.json` | 配置样例；真实 `config.json` 含 API key，已被 gitignore |
+
+### `xhs/` 后端
+
+| 文件 | 作用 |
+|---|---|
+| `__init__.py` | Python 包标记 |
+| `config.py` | 默认值 + `config.json` 覆盖 + 环境变量兜底；密钥掩码与保存 |
+| `resolve.py` | 小红书短链跟跳转、抽 note_id、图文正文兜底 |
+| `download.py` | yt-dlp 封装：代理、浏览器 cookie、失败降级 |
+| `audio.py` | ffmpeg 抽音轨、转码、按时长切片 |
+| `asr.py` | 云端语音转写（OpenAI 兼容协议 + 百炼协议） |
+| `summarize.py` | 三步总结：判断内容类型 → 提取素材 → 按类型成文 |
+| `github.py` | GitHub 仓库核实与搜索匹配，找不到就写「未找到」 |
+| `store.py` | 文件名清洗、去重、markdown 组装 |
+| `english.py` | 编程英语：提示词、对话、语音转写、长度限制 |
+| `pronounce.py` | 发音评测分发：Azure Pronunciation Assessment / 讯飞 |
+| `xunfei.py` | 讯飞语音评测：HMAC 鉴权、PCM 分帧、XML 结果解析 |
+| `keywords.py` | 多语言关键字：AI 解释 + GitHub API 搜索示例 |
+| `jobs.py` | 作业状态与事件总线（SSE 历史/增量） |
+| `pipeline.py` | 把解析、下载、转写、总结、落盘串成流水线 |
+| `sandbox.py` | 临时目录权限兼容补丁 |
+
+### `static/` 前端
+
+| 文件 | 作用 |
+|---|---|
+| `index.html` | 工具箱外壳：左侧工具列表 + 右侧 iframe 面板 |
+| `tools/notes.html` | 小红书视频转笔记页面 |
+| `tools/notes.meta.json` | 笔记工具在列表里的名称/说明/图标/排序 |
+| `tools/tax-calc.html` | 税率计算：工资个税、房贷、提前还款、车贷、增值税 |
+| `tools/tax-calc.meta.json` | 税率计算工具的列表元数据 |
+| `tools/english.html` | 编程英语：词汇查询、口语练习、语音输入、发音播放/评分 |
+| `tools/english.meta.json` | 编程英语工具的列表元数据 |
+| `tools/keywords.html` | 多语言关键字：本地速查、AI 解释、GitHub API 示例 |
+| `tools/keywords.meta.json` | 多语言关键字工具的列表元数据 |
+| `tools/_shared/base.css` | 各工具共用的基础样式 |
+| `tools/_shared/finance.js` | 金融计算纯函数：个税、社保、摊还、提前还款、IRR |
+| `tools/_shared/loan-ui.js` | 房贷/车贷/提前还款共用的结果渲染 |
+| `tools/_shared/presets.js` | 成都 2026 年度社保/公积金参数与来源链接 |
+| `tools/_shared/markdown.js` | 模型回复用的轻量 Markdown 渲染 |
+| `tools/_shared/readback.js` | 跟读匹配：目标句与 ASR 转写的词级对比 |
+| `tools/_shared/keywords-data.js` | 多语言关键字的本地词库 |
+
+### `tools/` 测试与自检
+
+| 文件 | 作用 |
+|---|---|
+| `selfcheck.py` | 离线自检：造假视频/假接口，跑完整笔记流水线 |
+| `check_finance.js` | 金融计算回归测试（node 跑） |
+| `check_readback.js` | 跟读匹配回归测试（node 跑） |
+| `check_pronounce.py` | Azure 发音评测离线测试（假响应） |
+| `check_xunfei.py` | 讯飞语音评测离线测试（假响应） |
+
+### 运行期目录（不纳入 Git）
+
+| 目录 | 说明 |
+|---|---|
+| `_vendor/` | 依赖，含自带 ffmpeg，由 `bootstrap_deps.py` 生成 |
+| `_wheels/` | wheel 下载缓存，仅离线重装时有用 |
+| `output/` | 生成的小红书 markdown 笔记 |
+| `work/` | 下载、转码、语音评测的中间文件 |
+| `tools/_selfcheck/` | 离线自检产生的临时文件 |
+| `__pycache__/` | Python 字节码缓存 |
+| `config.json` | 本机配置，含明文 API key，绝不提交 |
 
 ---
 
