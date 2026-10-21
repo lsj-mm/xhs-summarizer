@@ -1,0 +1,20 @@
+# 依赖是下载到项目内的（见 bootstrap_deps.py），不进版本库
+_vendor/
+_wheels/
+
+# 运行期产物
+work/
+output/
+*.log
+pip-log.txt
+.tmp/
+
+# 本机配置里有 API key，绝对不要提交
+config.json
+
+# 自检产生的中间文件
+tools/_selfcheck/
+
+# Python
+__pycache__/
+*.py[cod]
