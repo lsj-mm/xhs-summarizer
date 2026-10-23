@@ -78,7 +78,7 @@ GAMES = {
         "extra_max": 0,
         "extra_pick": 0,
         "price": 2,
-        "plays": ["single", "multiple", "compound", "package"],
+        "plays": ["single", "multiple", "compound", "dantuo", "package"],
         "pick_min": 1,
         "pick_max": 10,
         "compound_max": 15,
@@ -577,7 +577,17 @@ def _parse_params(game: str, play: str, params: dict) -> dict:
 
     if play == "dantuo":
         if game == "kl8":
-            raise LotteryError("快乐8不支持胆拖")
+            pick = _int(params.get("pick"), 5, 2, spec["pick_max"])
+            dan = _int(params.get("main_dan"), 2, 1, pick - 1)
+            need = pick - dan
+            tuo_min = need + 1
+            tuo = _int(params.get("main_tuo"), max(4, tuo_min), tuo_min, spec["main_max"] - dan)
+            if dan + tuo <= pick:
+                raise LotteryError("快乐8胆码 + 拖码必须多于基础玩法个数")
+            out["pick"] = pick
+            out["main_dan"] = dan
+            out["main_tuo"] = tuo
+            return out
         if game == "dlt":
             out["main_dan"] = _int(params.get("main_dan"), 2, 1, 4)
             out["main_tuo"] = _int(params.get("main_tuo"), 4, 2, 12)
@@ -607,6 +617,8 @@ def _bet_count(game: str, params: dict) -> int:
             return _comb(params["main_count"], 5) * _comb(params["extra_count"], 2)
         return _comb(params["main_count"], 6) * params["extra_count"]
     if play == "dantuo":
+        if game == "kl8":
+            return _comb(params["main_tuo"], params["pick"] - params["main_dan"])
         if game == "dlt":
             return _comb(params["main_tuo"], 5 - params["main_dan"])
         return _comb(params["main_tuo"], 6 - params["main_dan"]) * params["extra_count"]
@@ -646,6 +658,11 @@ def _build_tickets(game: str, params: dict, stats: dict, strategy: str, rng: ran
         omission = {item["n"]: item["count"] for item in stats["main"]["omission"]}
         tuo = _sample(remain, params["main_tuo"], _weights(remain, freq, omission, strategy), rng)
         tuo = sorted(tuo)
+        if game == "kl8":
+            selection = {"main": sorted(dan + tuo), "extra": [], "dan": sorted(dan), "tuo": tuo}
+            tickets.append({"kind": "dantuo", "main": sorted(dan + tuo), "extra": [],
+                            "dan": sorted(dan), "tuo": tuo})
+            return tickets, selection
         extra = _pick_extra(game, params["extra_count"], stats, strategy, rng)
         selection = {"main": sorted(dan + tuo), "extra": extra, "dan": sorted(dan), "tuo": tuo}
         tickets.append({"kind": "dantuo", "main": sorted(dan + tuo), "extra": extra,
@@ -853,7 +870,12 @@ def _expanded_tickets(record: dict):
         dan = selection.get("dan") or []
         tuo = selection.get("tuo") or []
         extra = selection.get("extra") or []
-        if game == "dlt":
+        if game == "kl8":
+            pick = int(record.get("params", {}).get("pick") or 5)
+            need = pick - len(dan)
+            for picked in combinations(tuo, need):
+                yield {"main": sorted(list(dan) + list(picked)), "extra": []}
+        elif game == "dlt":
             need = 5 - len(dan)
             for picked in combinations(tuo, need):
                 for extra_part in combinations(extra, 2):

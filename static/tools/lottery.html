@@ -346,17 +346,27 @@ function renderFields() {
         + '" step="1" value="' + c.extra_min + '" /></div>';
     }
   } else if (play === 'dantuo') {
-    const danMax = state.game === 'dlt' ? 4 : 5;
-    html += '<div class="field"><label for="f_main_dan">' + esc(spec.main_label)
-      + '胆码个数（1~' + danMax + '）</label>'
-      + '<input id="f_main_dan" type="number" min="1" max="' + danMax + '" step="1" value="2" /></div>';
-    html += '<div class="field"><label for="f_main_tuo">' + esc(spec.main_label)
-      + '拖码个数</label><input id="f_main_tuo" type="number" min="2" max="12" step="1" value="4" /></div>';
-    if (state.game === 'ssq') {
-      html += '<div class="field"><label for="f_extra_count">蓝球个数（1~6）</label>'
-        + '<input id="f_extra_count" type="number" min="1" max="6" step="1" value="1" /></div>';
+    if (state.game === 'kl8') {
+      html += '<div class="field"><label for="f_pick">基础玩法（选几）</label>'
+        + '<input id="f_pick" type="number" min="2" max="10" step="1" value="5" /></div>';
+      html += '<div class="field"><label for="f_main_dan">胆码个数（1~9）</label>'
+        + '<input id="f_main_dan" type="number" min="1" max="9" step="1" value="4" /></div>';
+      html += '<div class="field"><label for="f_main_tuo">拖码个数（胆码+拖码需多于选几）</label>'
+        + '<input id="f_main_tuo" type="number" min="1" max="79" step="1" value="2" /></div>';
+      html += '<p class="hint" style="margin:-4px 0 12px">注数 = C(拖码, 选几-胆码)。例如选五、4 胆拖 2：C(2,1)=2 注；4 胆全拖 76 个号：76 注。</p>';
     } else {
-      html += '<p class="hint" style="margin:-4px 0 12px">大乐透后区固定 2 个号；本工具只做前区胆拖。</p>';
+      const danMax = state.game === 'dlt' ? 4 : 5;
+      html += '<div class="field"><label for="f_main_dan">' + esc(spec.main_label)
+        + '胆码个数（1~' + danMax + '）</label>'
+        + '<input id="f_main_dan" type="number" min="1" max="' + danMax + '" step="1" value="2" /></div>';
+      html += '<div class="field"><label for="f_main_tuo">' + esc(spec.main_label)
+        + '拖码个数</label><input id="f_main_tuo" type="number" min="2" max="12" step="1" value="4" /></div>';
+      if (state.game === 'ssq') {
+        html += '<div class="field"><label for="f_extra_count">蓝球个数（1~6）</label>'
+          + '<input id="f_extra_count" type="number" min="1" max="6" step="1" value="1" /></div>';
+      } else {
+        html += '<p class="hint" style="margin:-4px 0 12px">大乐透后区固定 2 个号；本工具只做前区胆拖。</p>';
+      }
     }
   }
 
@@ -376,8 +386,8 @@ function ruleNote() {
     return '规则：红球 6/33，蓝球 1/16；单注 2 元。'
       + '复式上限为红球 12、蓝球 6（本工具保护值）。';
   }
-  return '规则：1~80 中选 1~10 个号码，单注 2 元；提供单式、多注、复式和模拟套餐。'
-    + '复式上限 15 个号（本工具保护值），按 C(选号个数, 选几) 计算注数。';
+  return '规则：1~80 中选 1~10 个号码，单注 2 元；提供单式、多注、复式、胆拖和模拟套餐。'
+    + '复式上限 15 个号；胆拖按 C(拖码, 选几-胆码) 计算注数。';
 }
 
 function renderAll() {
@@ -427,6 +437,13 @@ function collectParams() {
     };
   }
   if (play === 'dantuo') {
+    if (state.game === 'kl8') {
+      return {
+        pick: numberValue('f_pick', 5),
+        main_dan: numberValue('f_main_dan', 4),
+        main_tuo: numberValue('f_main_tuo', 2)
+      };
+    }
     const params = {
       main_dan: numberValue('f_main_dan', 2),
       main_tuo: numberValue('f_main_tuo', 4)

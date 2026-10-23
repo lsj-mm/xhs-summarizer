@@ -189,6 +189,30 @@ def main() -> int:
     check(len(list(lottery._expanded_tickets(kl8_compound_record))) == 21,
           "快乐8复式展开为 21 注单式")
 
+    kl8_dantuo_params = lottery._parse_params(
+        "kl8", "dantuo", {"pick": 5, "main_dan": 4, "main_tuo": 2}
+    )
+    check(lottery._bet_count("kl8", kl8_dantuo_params) == 2,
+          "快乐8选五 4 胆拖 2 = 2 注")
+    kl8_dantuo_tickets, kl8_dantuo_selection = lottery._build_tickets(
+        "kl8", kl8_dantuo_params, kl8_stats, "random", random.Random("kl8-dt")
+    )
+    check(len(kl8_dantuo_selection["dan"]) == 4 and len(kl8_dantuo_selection["tuo"]) == 2,
+          "快乐8胆拖生成 4 胆 + 2 拖")
+    kl8_dantuo_record = {
+        "game": "kl8", "play": "dantuo", "bet_count": 2, "append": False,
+        "tickets": kl8_dantuo_tickets, "selection": kl8_dantuo_selection,
+        "params": {"pick": 5, "main_dan": 4, "main_tuo": 2},
+    }
+    check(len(list(lottery._expanded_tickets(kl8_dantuo_record))) == 2,
+          "快乐8胆拖展开为 2 注单式")
+
+    full_drag_params = lottery._parse_params(
+        "kl8", "dantuo", {"pick": 5, "main_dan": 4, "main_tuo": 76}
+    )
+    check(lottery._bet_count("kl8", full_drag_params) == 76,
+          "快乐8选五 4 胆全拖 76 个号 = 76 注")
+
     failed = 0
     for ok, label in results:
         print(("  ✓ " if ok else "  ✗ ") + label)
