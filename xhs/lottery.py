@@ -333,7 +333,7 @@ def _zones(max_n: int, parts: int = 3) -> list[list[int]]:
 
 def compute_stats(draws: list[dict], game: str, window: int = 100) -> dict:
     spec = GAMES[game]
-    window = _int(window, 100, 20, min(200, len(draws)))
+    window = _int(window, 100, 10, min(200, len(draws)))
     selected = draws[:window]
     main_max = spec["main_max"]
     extra_max = spec["extra_max"]
@@ -628,7 +628,7 @@ def simulate(game: str, play: str, params: dict | None = None,
     parsed = _parse_params(game, play, params or {})
     history = fetch_history(game, config)
     draws = history["draws"]
-    window = _int(window, 100, 20, min(200, len(draws)))
+    window = _int(window, 100, 10, min(200, len(draws)))
     stats = compute_stats(draws, game, window)
 
     seed_text = str(seed).strip() if seed not in (None, "") else str(secrets.randbits(32))
