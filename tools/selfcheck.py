@@ -775,6 +775,12 @@ def main() -> int:
     check("def save_result" in lottery_py and "def check_saved" in lottery_py
           and "def score_record" in lottery_py,
           "彩票保存/核对/奖金计算逻辑存在")
+    check("竞彩足球" in lottery_html and "/api/football/daily" in lottery_html,
+          "彩票页已接入竞彩足球参考模式")
+    check((PROJECT_ROOT / "xhs" / "football.py").is_file(),
+          "足球赛程、赔率与泊松模型在 xhs/football.py")
+    check((PROJECT_ROOT / "tools" / "check_football.py").is_file(),
+          "足球分析有离线测试")
 
     file_server.shutdown()
     stub_server.shutdown()

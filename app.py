@@ -25,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from xhs import asr as asr_mod
 from xhs import config as config_mod
 from xhs import english as english_mod
+from xhs import football as football_mod
 from xhs import jobs as jobs_mod
 from xhs import keywords as keywords_mod
 from xhs import lottery as lottery_mod
@@ -345,6 +346,19 @@ async def lottery_check(record_id: str, payload: dict | None = None) -> dict:
     except Exception as exc:
         LOG.exception("核对彩票记录失败")
         raise HTTPException(status_code=502, detail=f"核对失败：{exc}") from exc
+
+
+@app.get("/api/football/daily")
+async def football_daily(day: str = "") -> dict:
+    """ESPN 公开赛程 + 赔率，返回当日足球分析。"""
+    target = day or dt.date.today().isoformat()
+    try:
+        return await asyncio.to_thread(football_mod.daily, target, config_mod.load())
+    except football_mod.FootballError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("足球赛程分析失败")
+        raise HTTPException(status_code=502, detail=f"足球数据暂时不可用：{exc}") from exc
 
 
 # ------------------------------------------------------------------ 作业

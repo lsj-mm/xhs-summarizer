@@ -116,6 +116,35 @@
   .saved-check b{font-size:12.5px}
   .saved-actions{display:flex; gap:7px; margin-top:8px; flex-wrap:wrap}
   .saved-empty{color:var(--muted); font-size:12.5px; padding:18px 4px; text-align:center}
+  .mode-tabs{display:flex; gap:6px; margin:0 0 14px; padding:4px; border:1px solid var(--line);
+    border-radius:10px; background:#f8f9fb; width:max-content; max-width:100%}
+  .mode-tabs button{font-family:inherit; font-size:13px; font-weight:600; padding:8px 16px;
+    border:0; border-radius:7px; background:transparent; color:var(--muted); cursor:pointer}
+  .mode-tabs button.on{background:#fff; color:var(--ink); box-shadow:0 1px 2px rgba(16,24,40,.08)}
+  .fb-controls{display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap}
+  .fb-card{border:1px solid var(--line); border-radius:12px; padding:15px 16px; margin-bottom:12px; background:#fff}
+  .fb-head{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px}
+  .fb-head .league{font-size:12px; color:var(--muted)}
+  .fb-head .time{font-size:11.5px; color:var(--muted)}
+  .fb-teams{display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center; margin-bottom:10px}
+  .fb-team{min-width:0}
+  .fb-team.away{text-align:right}
+  .fb-team .name{font-size:15px; font-weight:700; line-height:1.4}
+  .fb-team .form{font-size:11.5px; color:var(--muted); margin-top:3px}
+  .fb-vs{font-size:11px; color:var(--muted); font-weight:600}
+  .fb-odds{display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 10px}
+  .fb-odds span{font-size:11.5px; background:#f7f8fa; border:1px solid var(--line); border-radius:999px; padding:3px 8px}
+  .fb-recs{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:10px}
+  .fb-rec{background:#fafbfc; border:1px solid var(--line); border-radius:9px; padding:9px 11px; min-width:0}
+  .fb-rec h4{margin:0 0 6px; font-size:11.5px; color:var(--muted); font-weight:650}
+  .fb-rec .row{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; line-height:1.9}
+  .fb-rec .row b{font-variant-numeric:tabular-nums}
+  .fb-basis{font-size:11.5px; color:var(--muted); line-height:1.7; margin-top:10px; padding-top:9px; border-top:1px dashed var(--line)}
+  .fb-empty{color:var(--muted); font-size:12.5px; padding:14px 4px; text-align:center}
+  @media (max-width:860px){
+    .fb-recs{grid-template-columns:1fr}
+    .fb-teams{grid-template-columns:1fr auto 1fr}
+  }
   .disclaimer{margin-top:16px; text-align:center; color:#8a90a0; font-size:11.5px; line-height:1.7}
   .hidden{display:none !important}
   @media (max-width:860px){
@@ -130,13 +159,19 @@
   <header class="top">
     <div class="logo">🎲</div>
     <div>
-      <h1>彩票模拟摇号</h1>
-      <div class="sub">大乐透 · 双色球 · 快乐8｜真实历史数据 · 走势统计 · 仅供娱乐</div>
+      <h1>彩票模拟与竞彩参考</h1>
+      <div class="sub">大乐透 · 双色球 · 快乐8 ｜ 竞彩足球参考 ｜ 仅供娱乐</div>
     </div>
     <div class="grow"></div>
-    <span class="pill">不预测开奖</span>
+    <span class="pill">仅供娱乐</span>
   </header>
 
+  <div class="mode-tabs">
+    <button type="button" data-mode="lottery" class="on">🎲 彩票模拟</button>
+    <button type="button" data-mode="football">⚽ 竞彩足球</button>
+  </div>
+
+  <div id="lotteryApp">
   <div class="warn">
     <b>娱乐参考，不是购彩建议。</b> 彩票每期独立随机，历史冷热、遗漏、和值不能预测下一期结果。
     本工具只做规则内的模拟选号和统计展示，请理性对待。
@@ -222,6 +257,31 @@
       <p class="disclaimer">模拟结果仅供娱乐参考，不构成任何购彩建议。请理性购彩，量力而行。</p>
     </main>
   </div>
+  </div><!-- lotteryApp -->
+
+  <div id="footballApp" class="hidden">
+    <div class="warn">
+      <b>竞彩参考，不是投注建议。</b> 数据来自 ESPN 公开赛程与赔率，不是中国竞彩官方赛程；
+      比分、半全场、总进球由泊松模型根据赛前赔率和近期战绩推算，未接入伤停、阵容和历史交锋。
+      赛程和赔率会变化，请以官方为准。
+    </div>
+
+    <section class="card">
+      <div class="fb-controls">
+        <div class="field" style="margin:0;min-width:180px">
+          <label for="fbDate">比赛日期（北京时间）</label>
+          <input type="date" id="fbDate" />
+        </div>
+        <button class="primary" id="fbLoad" type="button" style="width:auto">获取当日比赛</button>
+      </div>
+      <p class="hint" style="margin:8px 0 0">按北京时间筛选当天比赛；ESPN 赛程可能包含非竞彩场次，只做参考。</p>
+    </section>
+
+    <div id="fbMessage"></div>
+    <section class="card hidden" id="fbMeta"></section>
+    <div id="fbMatches" class="fb-list"></div>
+    <p class="disclaimer">以上为数据模型推算，仅供娱乐参考，不构成投注建议。请理性看待。</p>
+  </div>
 </div>
 
 <script>
@@ -241,6 +301,7 @@ const state = {
   play: 'single',
   result: null,
   savedRecords: [],
+  footballLoaded: false,
   loading: false
 };
 
@@ -812,6 +873,129 @@ $('savedList').addEventListener('click', (event) => {
 
 $('refreshSaved').addEventListener('click', loadSaved);
 
+/* ---------------------------------------------------------------- 竞彩足球 */
+
+function todayLocal() {
+  const now = new Date();
+  const pad2 = (n) => String(n).padStart(2, '0');
+  return now.getFullYear() + '-' + pad2(now.getMonth() + 1) + '-' + pad2(now.getDate());
+}
+
+function setMode(mode) {
+  document.querySelectorAll('.mode-tabs button').forEach((btn) => {
+    btn.classList.toggle('on', btn.getAttribute('data-mode') === mode);
+  });
+  $('lotteryApp').classList.toggle('hidden', mode !== 'lottery');
+  $('footballApp').classList.toggle('hidden', mode !== 'football');
+  if (mode === 'football' && !state.footballLoaded) loadFootball();
+}
+
+function footballCard(match) {
+  const analysis = match.analysis;
+  const kickoff = new Date(match.kickoff);
+  const timeText = Number.isNaN(kickoff.getTime())
+    ? match.kickoff
+    : kickoff.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+  const home = match.home || {};
+  const away = match.away || {};
+  let oddsHtml = '';
+  if (analysis) {
+    oddsHtml = '<div class="fb-odds">'
+      + '<span>主胜 ' + esc(analysis.probabilities.home) + '%</span>'
+      + '<span>平 ' + esc(analysis.probabilities.draw) + '%</span>'
+      + '<span>客胜 ' + esc(analysis.probabilities.away) + '%</span>'
+      + '<span>期望进球 ' + esc(analysis.expected_goals.home) + ' - ' + esc(analysis.expected_goals.away) + '</span>'
+      + '</div>';
+  } else {
+    oddsHtml = '<div class="fb-odds"><span class="pill warn">暂无赔率，数据不足</span></div>';
+  }
+
+  let recs = '';
+  if (analysis) {
+    recs = '<div class="fb-recs">'
+      + '<div class="fb-rec"><h4>比分参考</h4>'
+      + analysis.scores.slice(0, 3).map((item) =>
+        '<div class="row"><span>' + esc(item.score) + ' <small>' + esc(item.outcome) + '</small></span><b>'
+        + esc(item.prob) + '%</b></div>').join('')
+      + '</div>'
+      + '<div class="fb-rec"><h4>半全场参考</h4>'
+      + analysis.htft.slice(0, 3).map((item) =>
+        '<div class="row"><span>' + esc(item.combo) + '</span><b>' + esc(item.prob) + '%</b></div>').join('')
+      + '</div>'
+      + '<div class="fb-rec"><h4>总进球参考</h4>'
+      + analysis.totals.map((item) =>
+        '<div class="row"><span>' + esc(item.range) + '</span><b>' + esc(item.prob) + '%</b></div>').join('')
+      + '</div></div>';
+  }
+
+  const basis = analysis
+    ? '<div class="fb-basis">' + esc(analysis.basis) + '<br />' + esc(analysis.data_note) + '</div>'
+    : '<div class="fb-basis">ESPN 暂无该场胜平负/大小球赔率，无法计算比分、半全场和总进球；不编造数据。</div>';
+
+  return '<div class="fb-card">'
+    + '<div class="fb-head"><span class="league">' + esc(match.league || '足球') + '</span>'
+    + '<span class="time">' + esc(timeText) + '</span>'
+    + '<span class="pill">' + esc(match.odds ? (match.odds.provider || 'ESPN') : '无赔率') + '</span></div>'
+    + '<div class="fb-teams">'
+    + '<div class="fb-team"><div class="name">' + esc(home.name) + '</div><div class="form">'
+    + esc(home.form || '近期战绩未知') + ' · ' + esc(home.record || '') + '</div></div>'
+    + '<div class="fb-vs">VS</div>'
+    + '<div class="fb-team away"><div class="name">' + esc(away.name) + '</div><div class="form">'
+    + esc(away.form || '近期战绩未知') + ' · ' + esc(away.record || '') + '</div></div>'
+    + '</div>' + oddsHtml + recs + basis + '</div>';
+}
+
+function renderFootball(data) {
+  const matches = data.matches || [];
+  const meta = data.data || {};
+  $('fbMeta').classList.remove('hidden');
+  $('fbMeta').innerHTML = '<h2>数据来源与说明</h2>'
+    + '<div class="data-meta">'
+    + '来源：<b>' + esc(data.source_name || 'ESPN') + '</b>（非竞彩官方赛程）'
+    + (data.cached ? ' <span class="pill">本地缓存</span>' : ' <span class="pill ok">在线抓取</span>')
+    + (data.stale ? ' <span class="pill warn">缓存/降级</span>' : '') + '<br />'
+    + '日期：<b>' + esc(data.date) + '</b> ｜ 比赛数：<b>' + matches.length + '</b>'
+    + ' ｜ 抓取时间：' + esc(formatTime(data.fetched_at)) + '<br />'
+    + '接口：<a href="' + esc(data.source || '#') + '" target="_blank" rel="noreferrer">ESPN scoreboard</a>'
+    + (data.truncated ? '<br />场次较多，只显示前 24 场有数据/待分析的比赛。' : '')
+    + (data.warning ? '<br /><span style="color:#a86800">' + esc(data.warning) + '</span>' : '')
+    + '</div>';
+
+  if (!matches.length) {
+    $('fbMatches').innerHTML = '<div class="card"><div class="fb-empty">当天没有查到可分析的足球比赛，换个日期试试。</div></div>';
+    return;
+  }
+  $('fbMatches').innerHTML = matches.map(footballCard).join('');
+}
+
+async function loadFootball() {
+  const date = $('fbDate').value || todayLocal();
+  $('fbLoad').disabled = true;
+  $('fbLoad').textContent = '正在获取…';
+  $('fbMessage').innerHTML = '<div class="loading">正在读取 ESPN 公开赛程和赔率，并计算模型…</div>';
+  try {
+    const response = await fetch('/api/football/daily?day=' + encodeURIComponent(date));
+    const data = await response.json();
+    if (!response.ok) throw new Error((data && data.detail) || ('HTTP ' + response.status));
+    state.footballLoaded = true;
+    $('fbMessage').innerHTML = '';
+    renderFootball(data);
+  } catch (err) {
+    state.footballLoaded = false;
+    $('fbMessage').innerHTML = '<div class="err">' + esc(err && err.message ? err.message : String(err)) + '</div>';
+    $('fbMatches').innerHTML = '';
+    $('fbMeta').classList.add('hidden');
+  } finally {
+    $('fbLoad').disabled = false;
+    $('fbLoad').textContent = '获取当日比赛';
+  }
+}
+
+document.querySelectorAll('.mode-tabs button').forEach((btn) => {
+  btn.addEventListener('click', () => setMode(btn.getAttribute('data-mode')));
+});
+$('fbLoad').addEventListener('click', () => { state.footballLoaded = false; loadFootball(); });
+
 async function boot() {
   try {
     const response = await fetch('/api/lottery/games');
@@ -820,6 +1004,7 @@ async function boot() {
     state.games = data.games;
     state.game = 'dlt';
     state.play = 'single';
+    $('fbDate').value = todayLocal();
     renderAll();
     await loadSaved();
   } catch (err) {
