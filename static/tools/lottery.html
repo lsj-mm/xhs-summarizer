@@ -898,6 +898,9 @@ function footballCard(match) {
     : kickoff.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
   const home = match.home || {};
   const away = match.away || {};
+  const homeName = home.name_zh || home.name || '';
+  const awayName = away.name_zh || away.name || '';
+  const leagueName = match.league_zh || match.league || '足球';
   let oddsHtml = '';
   if (analysis) {
     oddsHtml = '<div class="fb-odds">'
@@ -933,14 +936,16 @@ function footballCard(match) {
     : '<div class="fb-basis">ESPN 暂无该场胜平负/大小球赔率，无法计算比分、半全场和总进球；不编造数据。</div>';
 
   return '<div class="fb-card">'
-    + '<div class="fb-head"><span class="league">' + esc(match.league || '足球') + '</span>'
+    + '<div class="fb-head"><span class="league">' + esc(leagueName) + '</span>'
     + '<span class="time">' + esc(timeText) + '</span>'
     + '<span class="pill">' + esc(match.odds ? (match.odds.provider || 'ESPN') : '无赔率') + '</span></div>'
     + '<div class="fb-teams">'
-    + '<div class="fb-team"><div class="name">' + esc(home.name) + '</div><div class="form">'
+    + '<div class="fb-team"><div class="name" title="' + esc(home.name) + '">' + esc(homeName)
+    + '</div><div class="form">'
     + esc(home.form || '近期战绩未知') + ' · ' + esc(home.record || '') + '</div></div>'
     + '<div class="fb-vs">VS</div>'
-    + '<div class="fb-team away"><div class="name">' + esc(away.name) + '</div><div class="form">'
+    + '<div class="fb-team away"><div class="name" title="' + esc(away.name) + '">' + esc(awayName)
+    + '</div><div class="form">'
     + esc(away.form || '近期战绩未知') + ' · ' + esc(away.record || '') + '</div></div>'
     + '</div>' + oddsHtml + recs + basis + '</div>';
 }
@@ -956,6 +961,7 @@ function renderFootball(data) {
     + (data.stale ? ' <span class="pill warn">缓存/降级</span>' : '') + '<br />'
     + '日期：<b>' + esc(data.date) + '</b> ｜ 比赛数：<b>' + matches.length + '</b>'
     + ' ｜ 抓取时间：' + esc(formatTime(data.fetched_at)) + '<br />'
+    + '球队名优先显示中文，未收录的保留英文原名（悬停可看原名）。<br />'
     + '接口：<a href="' + esc(data.source || '#') + '" target="_blank" rel="noreferrer">ESPN scoreboard</a>'
     + (data.truncated ? '<br />场次较多，只显示前 24 场有数据/待分析的比赛。' : '')
     + (data.warning ? '<br /><span style="color:#a86800">' + esc(data.warning) + '</span>' : '')

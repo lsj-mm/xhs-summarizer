@@ -32,6 +32,10 @@ def main() -> int:
     check(abs(football._decimal_odds("-155") - (1 + 100 / 155)) < 1e-9,
           "美式负赔率转小数赔率")
     check(football._decimal_odds("not-a-number") is None, "非法赔率返回 None")
+    check(football.zh_team("Brisbane Roar FC") == "布里斯班狮吼", "球队中文名映射")
+    check(football.zh_team("Nigeria U17") == "尼日利亚U17", "U17 国家队中文名")
+    check(football.zh_team("Unknown FC") == "", "未收录球队保留英文回退")
+    check(football.zh_league("A-League Men") == "澳超", "联赛中文名映射")
 
     matrix = football._score_matrix(1.5, 1.2)
     total = sum(sum(row) for row in matrix)

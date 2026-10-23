@@ -14,6 +14,7 @@ import datetime as dt
 import json
 import logging
 import math
+import re
 from pathlib import Path
 
 import requests
@@ -23,9 +24,177 @@ from . import config as config_mod
 LOG = logging.getLogger(__name__)
 
 SOURCE_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard"
+CACHE_VERSION = 2
 CACHE_TTL_SECONDS = 10 * 60
 MAX_MATCHES = 24
 MAX_GOALS = 8
+
+# 中文名是人工维护的常用译名；没收录的球队保留英文名，避免乱翻译。
+TEAM_ZH = {
+    "Brisbane Roar FC": "布里斯班狮吼",
+    "Perth Glory FC": "珀斯光荣",
+    "Inter Kashi": "国际卡希",
+    "East Bengal FC": "东孟加拉",
+    "Al Faisaly": "费萨里",
+    "Al Nassr": "利雅得胜利",
+    "Al Ittihad": "吉达联合",
+    "Al Diriyah": "迪里耶",
+    "Petro de Luanda": "罗安达石油",
+    "Scottland Mabvuku": "斯科特兰马布武库",
+    "Arsenal": "阿森纳",
+    "Aston Villa": "阿斯顿维拉",
+    "Bournemouth": "伯恩茅斯",
+    "Brentford": "布伦特福德",
+    "Brighton & Hove Albion": "布莱顿",
+    "Chelsea": "切尔西",
+    "Crystal Palace": "水晶宫",
+    "Everton": "埃弗顿",
+    "Fulham": "富勒姆",
+    "Ipswich Town": "伊普斯维奇",
+    "Leicester City": "莱斯特城",
+    "Liverpool": "利物浦",
+    "Manchester City": "曼城",
+    "Manchester United": "曼联",
+    "Newcastle United": "纽卡斯尔联",
+    "Nottingham Forest": "诺丁汉森林",
+    "Southampton": "南安普顿",
+    "Tottenham Hotspur": "托特纳姆热刺",
+    "West Ham United": "西汉姆联",
+    "Wolverhampton Wanderers": "狼队",
+    "Real Madrid": "皇家马德里",
+    "Barcelona": "巴塞罗那",
+    "Atletico Madrid": "马德里竞技",
+    "Sevilla": "塞维利亚",
+    "Real Sociedad": "皇家社会",
+    "Athletic Club": "毕尔巴鄂竞技",
+    "Villarreal": "比利亚雷亚尔",
+    "Valencia": "瓦伦西亚",
+    "Real Betis": "皇家贝蒂斯",
+    "Alaves": "阿拉维斯",
+    "Malaga": "马拉加",
+    "Girona": "赫罗纳",
+    "Celta Vigo": "塞尔塔",
+    "Getafe": "赫塔费",
+    "Osasuna": "奥萨苏纳",
+    "Mallorca": "马略卡",
+    "Rayo Vallecano": "巴列卡诺",
+    "Espanyol": "西班牙人",
+    "Bayern Munich": "拜仁慕尼黑",
+    "Borussia Dortmund": "多特蒙德",
+    "RB Leipzig": "莱比锡",
+    "Bayer Leverkusen": "勒沃库森",
+    "Eintracht Frankfurt": "法兰克福",
+    "VfB Stuttgart": "斯图加特",
+    "Wolfsburg": "沃尔夫斯堡",
+    "Union Berlin": "柏林联合",
+    "Freiburg": "弗赖堡",
+    "Mainz": "美因茨",
+    "Werder Bremen": "云达不莱梅",
+    "Hoffenheim": "霍芬海姆",
+    "Augsburg": "奥格斯堡",
+    "Borussia Monchengladbach": "门兴格拉德巴赫",
+    "Juventus": "尤文图斯",
+    "Inter Milan": "国际米兰",
+    "AC Milan": "AC米兰",
+    "Napoli": "那不勒斯",
+    "Roma": "罗马",
+    "Lazio": "拉齐奥",
+    "Atalanta": "亚特兰大",
+    "Fiorentina": "佛罗伦萨",
+    "Bologna": "博洛尼亚",
+    "Torino": "都灵",
+    "Udinese": "乌迪内斯",
+    "Genoa": "热那亚",
+    "Sassuolo": "萨索洛",
+    "Parma": "帕尔马",
+    "Lecce": "莱切",
+    "Cagliari": "卡利亚里",
+    "Verona": "维罗纳",
+    "Como": "科莫",
+    "Paris Saint-Germain": "巴黎圣日耳曼",
+    "Marseille": "马赛",
+    "Lyon": "里昂",
+    "Monaco": "摩纳哥",
+    "Lille": "里尔",
+    "Nice": "尼斯",
+    "Lens": "朗斯",
+    "Rennes": "雷恩",
+    "Strasbourg": "斯特拉斯堡",
+    "Nantes": "南特",
+    "Brest": "布雷斯特",
+    "Toulouse": "图卢兹",
+    "Montpellier": "蒙彼利埃",
+    "Benfica": "本菲卡",
+    "Porto": "波尔图",
+    "Sporting CP": "葡萄牙体育",
+    "Ajax": "阿贾克斯",
+    "PSV Eindhoven": "埃因霍温",
+    "Feyenoord": "费耶诺德",
+    "Celtic": "凯尔特人",
+    "Rangers": "流浪者",
+    "Galatasaray": "加拉塔萨雷",
+    "Fenerbahce": "费内巴切",
+    "Besiktas": "贝西克塔斯",
+    "Olympiacos": "奥林匹亚科斯",
+    "Panathinaikos": "帕纳辛奈科斯",
+    "Shakhtar Donetsk": "顿涅茨克矿工",
+    "Dynamo Kyiv": "基辅迪纳摩",
+}
+
+COUNTRY_ZH = {
+    "Nigeria": "尼日利亚", "North Korea": "朝鲜", "Puerto Rico": "波多黎各",
+    "Poland": "波兰", "England": "英格兰", "France": "法国", "Germany": "德国",
+    "Spain": "西班牙", "Italy": "意大利", "Portugal": "葡萄牙", "Netherlands": "荷兰",
+    "Brazil": "巴西", "Argentina": "阿根廷", "Japan": "日本", "South Korea": "韩国",
+    "China": "中国", "Australia": "澳大利亚", "Mexico": "墨西哥", "USA": "美国",
+}
+
+LEAGUE_ZH = {
+    "A-League Men": "澳超",
+    "Indian Super League": "印度超",
+    "Saudi Pro League": "沙特联",
+    "CAF Champions League, Second Preliminary Round": "非冠杯资格赛第二轮",
+    "FIFA U-17 Women's World Cup, Group B": "U17 女足世界杯 B 组",
+    "English Premier League": "英超",
+    "LALIGA": "西甲",
+    "Serie A": "意甲",
+    "Bundesliga": "德甲",
+    "Ligue 1": "法甲",
+    "UEFA Champions League": "欧冠",
+    "UEFA Europa League": "欧联",
+    "UEFA Conference League": "欧协联",
+    "FIFA World Cup": "世界杯",
+    "FIFA Club World Cup": "世俱杯",
+    "Copa Libertadores": "解放者杯",
+    "Copa Sudamericana": "南美杯",
+    "Major League Soccer": "美职联",
+    "Liga MX": "墨超",
+    "J1 League": "日职联",
+    "K League 1": "韩K联",
+    "Chinese Super League": "中超",
+}
+
+
+def zh_team(name: str) -> str:
+    text = str(name or "").strip()
+    if text in TEAM_ZH:
+        return TEAM_ZH[text]
+    match = re.match(r"^(.*?)\s+U(\d+)$", text)
+    if match and match.group(1) in COUNTRY_ZH:
+        return COUNTRY_ZH[match.group(1)] + "U" + match.group(2)
+    return ""
+
+
+def zh_league(name: str) -> str:
+    text = str(name or "").strip()
+    if text in LEAGUE_ZH:
+        return LEAGUE_ZH[text]
+    # 常见格式「联赛, 阶段」：只翻译联赛部分
+    if "," in text:
+        base = text.split(",", 1)[0].strip()
+        if base in LEAGUE_ZH:
+            return LEAGUE_ZH[base] + " · " + text.split(",", 1)[1].strip()
+    return ""
 
 
 class FootballError(RuntimeError):
@@ -45,6 +214,8 @@ def _read_cache(day: str, config: dict):
     except (OSError, json.JSONDecodeError):
         return None
     if not isinstance(data, dict) or not isinstance(data.get("matches"), list):
+        return None
+    if data.get("version") != CACHE_VERSION:
         return None
     return data
 
@@ -151,17 +322,21 @@ def _parse_event(event: dict, local_day: dt.date):
     def team_info(item):
         team = item.get("team") or {}
         record = next((r.get("summary") for r in (item.get("records") or []) if r.get("summary")), "")
+        name = team.get("displayName") or team.get("name") or ""
         return {
-            "name": team.get("displayName") or team.get("name") or "",
+            "name": name,
+            "name_zh": zh_team(name),
             "short": team.get("abbreviation") or "",
             "logo": team.get("logo") or "",
             "form": str(item.get("form") or ""),
             "record": record,
         }
 
+    league = comp.get("altGameNote") or (event.get("season") or {}).get("slug") or ""
     return {
         "id": str(event.get("id") or ""),
-        "league": comp.get("altGameNote") or (event.get("season") or {}).get("slug") or "",
+        "league": league,
+        "league_zh": zh_league(league),
         "kickoff": local.isoformat(timespec="minutes"),
         "kickoff_utc": kickoff.astimezone(dt.timezone.utc).isoformat(timespec="minutes"),
         "home": team_info(home),
@@ -351,12 +526,14 @@ def _analyze(match: dict):
     ]
     ranges.sort(key=lambda x: x["prob"], reverse=True)
 
+    home_name = match["home"].get("name_zh") or match["home"]["name"]
+    away_name = match["away"].get("name_zh") or match["away"]["name"]
     basis = (
         f"胜平负赔率隐含：主胜 {_pct(p_home)}%、平 {_pct(p_draw)}%、客胜 {_pct(p_away)}%；"
         f"大小球 {line:g} 大球 {_pct(p_over) if p_over is not None else '—'}%。"
         f"模型拟合期望进球 {lh:.2f}-{la:.2f}。"
-        f"近期战绩：{match['home']['name']} {match['home']['form'] or '—'}，"
-        f"{match['away']['name']} {match['away']['form'] or '—'}。"
+        f"近期战绩：{home_name} {match['home']['form'] or '—'}，"
+        f"{away_name} {match['away']['form'] or '—'}。"
     )
     return {
         "probabilities": {"home": _pct(h), "draw": _pct(d), "away": _pct(a)},
@@ -401,6 +578,7 @@ def daily(day_text: str, config: dict | None = None) -> dict:
     analyzed = analyzed[:MAX_MATCHES]
     payload = {
         "ok": True,
+        "version": CACHE_VERSION,
         "date": day_text,
         "source": SOURCE_URL,
         "source_name": "ESPN 公开赛程/赔率",
