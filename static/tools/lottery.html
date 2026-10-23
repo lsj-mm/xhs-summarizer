@@ -386,6 +386,18 @@ function renderAll() {
   renderFields();
 }
 
+function resetResultPanel() {
+  state.result = null;
+  setMessage('');
+  $('dataCard').classList.add('hidden');
+  $('statsCard').classList.add('hidden');
+  $('resultCard').innerHTML = '<div class="empty">'
+    + '<div class="big">🎲</div>'
+    + '<div>选好彩种和玩法，点「生成模拟号码」。</div>'
+    + '<div style="margin-top:6px">会先读取官方历史开奖，再按策略生成号码。</div>'
+    + '</div>';
+}
+
 function numberValue(id, fallback) {
   const el = $(id);
   if (!el) return fallback;
@@ -754,18 +766,14 @@ $('gameTabs').addEventListener('click', (event) => {
   if (!btn) return;
   state.game = btn.getAttribute('data-game');
   state.play = 'single';
-  state.result = null;
-  setMessage('');
-  $('dataCard').classList.add('hidden');
-  $('statsCard').classList.add('hidden');
   renderAll();
+  resetResultPanel();
   renderSavedForGame();
 });
 
 $('playSelect').addEventListener('change', () => {
   state.play = $('playSelect').value;
-  state.result = null;
-  setMessage('');
+  resetResultPanel();
   renderFields();
 });
 
