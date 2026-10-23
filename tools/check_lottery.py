@@ -171,6 +171,24 @@ def main() -> int:
     check(len(list(lottery._expanded_tickets(dlt_dantuo))) == 4,
           "大乐透胆拖展开注数正确")
 
+    kl8_compound_params = lottery._parse_params(
+        "kl8", "compound", {"pick": 5, "main_count": 7}
+    )
+    check(lottery._bet_count("kl8", kl8_compound_params) == 21,
+          "快乐8选五复式选 7 个号 = 21 注")
+    kl8_compound_tickets, kl8_selection = lottery._build_tickets(
+        "kl8", kl8_compound_params, kl8_stats, "random", random.Random("kl8-c")
+    )
+    check(len(kl8_compound_tickets[0]["main"]) == 7,
+          "快乐8复式生成 7 个号码")
+    kl8_compound_record = {
+        "game": "kl8", "play": "compound", "bet_count": 21, "append": False,
+        "tickets": kl8_compound_tickets, "selection": kl8_selection,
+        "params": {"pick": 5, "main_count": 7},
+    }
+    check(len(list(lottery._expanded_tickets(kl8_compound_record))) == 21,
+          "快乐8复式展开为 21 注单式")
+
     failed = 0
     for ok, label in results:
         print(("  ✓ " if ok else "  ✗ ") + label)

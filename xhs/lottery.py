@@ -78,9 +78,10 @@ GAMES = {
         "extra_max": 0,
         "extra_pick": 0,
         "price": 2,
-        "plays": ["single", "multiple", "package"],
+        "plays": ["single", "multiple", "compound", "package"],
         "pick_min": 1,
         "pick_max": 10,
+        "compound_max": 15,
         "api": (
             "https://www.cwl.gov.cn/cwl_admin/front/cwlkj/search/kjxx/findDrawNotice"
             "?name=kl8&issueCount=&issueStart=&issueEnd=&dayStart=&dayEnd="
@@ -124,6 +125,7 @@ def public_games() -> dict:
             "compound": game.get("compound"),
             "pick_min": game.get("pick_min"),
             "pick_max": game.get("pick_max"),
+            "compound_max": game.get("compound_max"),
             "source_name": game["source_name"],
             "source_url": game["api"],
         }
@@ -557,7 +559,13 @@ def _parse_params(game: str, play: str, params: dict) -> dict:
 
     if play == "compound":
         if game == "kl8":
-            raise LotteryError("快乐8不支持复式")
+            pick = _int(params.get("pick"), 5, spec["pick_min"], spec["pick_max"])
+            out["pick"] = pick
+            out["main_count"] = _int(params.get("main_count"), pick + 2,
+                                     pick + 1, spec.get("compound_max", 15))
+            if out["main_count"] <= pick:
+                raise LotteryError("快乐8复式选号个数必须多于基础玩法个数")
+            return out
         c = spec["compound"]
         if game == "dlt":
             out["main_count"] = _int(params.get("main_count"), 6, c["main_min"], c["main_max"])
@@ -593,6 +601,8 @@ def _bet_count(game: str, params: dict) -> int:
     if play in ("single", "multiple", "package"):
         return params["count"]
     if play == "compound":
+        if game == "kl8":
+            return _comb(params["main_count"], params["pick"])
         if game == "dlt":
             return _comb(params["main_count"], 5) * _comb(params["extra_count"], 2)
         return _comb(params["main_count"], 6) * params["extra_count"]
@@ -620,6 +630,10 @@ def _build_tickets(game: str, params: dict, stats: dict, strategy: str, rng: ran
 
     if play == "compound":
         main = _pick_main(game, params["main_count"], stats, strategy, rng)
+        if game == "kl8":
+            selection = {"main": main, "extra": [], "dan": [], "tuo": main}
+            tickets.append({"kind": "compound", "main": main, "extra": []})
+            return tickets, selection
         extra = _pick_extra(game, params["extra_count"], stats, strategy, rng)
         selection = {"main": main, "extra": extra, "dan": [], "tuo": main}
         tickets.append({"kind": "compound", "main": main, "extra": extra})
@@ -821,7 +835,11 @@ def _expanded_tickets(record: dict):
     if play == "compound":
         main = selection.get("main") or []
         extra = selection.get("extra") or []
-        if game == "dlt":
+        if game == "kl8":
+            pick = int(record.get("params", {}).get("pick") or 5)
+            for main_part in combinations(main, pick):
+                yield {"main": list(main_part), "extra": []}
+        elif game == "dlt":
             for main_part in combinations(main, 5):
                 for extra_part in combinations(extra, 2):
                     yield {"main": list(main_part), "extra": list(extra_part)}
