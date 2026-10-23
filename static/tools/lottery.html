@@ -209,7 +209,7 @@
 
       <section class="card" id="historyCard" style="margin-top:16px">
         <div class="hist-head">
-          <h2 style="margin:0">历史摇号</h2>
+          <h2 style="margin:0" id="historyTitle">历史摇号</h2>
           <div style="display:flex;align-items:center;gap:8px">
             <span class="pill" id="savedCount">0 条</span>
             <button class="ghost" id="refreshSaved" type="button">刷新</button>
@@ -239,6 +239,7 @@ const state = {
   game: 'dlt',
   play: 'single',
   result: null,
+  savedRecords: [],
   loading: false
 };
 
@@ -550,9 +551,12 @@ function formatSavedNumbers(record) {
 }
 
 function renderSaved(records) {
+  const gameName = state.games && state.games[state.game] ? state.games[state.game].name : '';
+  $('historyTitle').textContent = '历史摇号' + (gameName ? ' · ' + gameName : '');
   $('savedCount').textContent = records.length + ' 条';
   if (!records.length) {
-    $('savedList').innerHTML = '<div class="saved-empty">还没有保存的摇号记录。</div>';
+    $('savedList').innerHTML = '<div class="saved-empty">还没有保存的'
+      + esc(gameName) + '摇号记录。</div>';
     return;
   }
   $('savedList').innerHTML = records.map((record) => {
@@ -589,12 +593,18 @@ function renderSaved(records) {
   }).join('');
 }
 
+function renderSavedForGame() {
+  const records = (state.savedRecords || []).filter((record) => record.game === state.game);
+  renderSaved(records);
+}
+
 async function loadSaved() {
   try {
     const response = await fetch('/api/lottery/saved');
     const data = await response.json();
     if (!response.ok) throw new Error((data && data.detail) || ('HTTP ' + response.status));
-    renderSaved(data.records || []);
+    state.savedRecords = data.records || [];
+    renderSavedForGame();
   } catch (err) {
     $('savedList').innerHTML = '<div class="err">历史记录加载失败：' + esc(err.message) + '</div>';
   }
@@ -724,6 +734,7 @@ $('gameTabs').addEventListener('click', (event) => {
   $('dataCard').classList.add('hidden');
   $('statsCard').classList.add('hidden');
   renderAll();
+  renderSavedForGame();
 });
 
 $('playSelect').addEventListener('change', () => {
