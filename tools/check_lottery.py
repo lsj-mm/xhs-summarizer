@@ -60,6 +60,7 @@ def main() -> int:
     check(lottery._comb(6, 5) == 6 and lottery._comb(7, 6) == 7, "组合数计算正确")
 
     cases = [
+        ("dlt", "compound", {"main_count": 6, "extra_count": 2}, 6),
         ("dlt", "compound", {"main_count": 6, "extra_count": 3}, 18),
         ("dlt", "dantuo", {"main_dan": 2, "main_tuo": 4}, 4),
         ("ssq", "compound", {"main_count": 7, "extra_count": 2}, 14),

@@ -41,7 +41,7 @@ GAMES = {
         "price": 2,
         "append_price": 3,
         "plays": ["single", "multiple", "compound", "dantuo", "package"],
-        "compound": {"main_min": 6, "main_max": 12, "extra_min": 3, "extra_max": 6},
+        "compound": {"main_min": 6, "main_max": 12, "extra_min": 2, "extra_max": 6},
         "api": (
             "https://webapi.sporttery.cn/gateway/lottery/getHistoryPageListV1.qry"
             "?gameNo=85&provinceId=0&pageSize=100&isVerify=1&pageNo=1"
@@ -537,7 +537,7 @@ def _parse_params(game: str, play: str, params: dict) -> dict:
         c = spec["compound"]
         if game == "dlt":
             out["main_count"] = _int(params.get("main_count"), 6, c["main_min"], c["main_max"])
-            out["extra_count"] = _int(params.get("extra_count"), 3, c["extra_min"], c["extra_max"])
+            out["extra_count"] = _int(params.get("extra_count"), 2, c["extra_min"], c["extra_max"])
         else:
             out["main_count"] = _int(params.get("main_count"), 7, c["main_min"], c["main_max"])
             out["extra_count"] = _int(params.get("extra_count"), 1, c["extra_min"], c["extra_max"])
