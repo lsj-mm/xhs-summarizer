@@ -778,7 +778,7 @@ def main() -> int:
     check("竞彩足球" in lottery_html and "/api/football/daily" in lottery_html,
           "彩票页已接入竞彩足球参考模式")
     check((PROJECT_ROOT / "xhs" / "football.py").is_file(),
-          "足球赛程、赔率与泊松模型在 xhs/football.py")
+          "足球赛程、赔率与推荐逻辑在 xhs/football.py")
     check((PROJECT_ROOT / "tools" / "check_football.py").is_file(),
           "足球分析有离线测试")
 

@@ -261,20 +261,20 @@
 
   <div id="footballApp" class="hidden">
     <div class="warn">
-      <b>竞彩参考，不是投注建议。</b> 数据来自 ESPN 公开赛程与赔率，不是中国竞彩官方赛程；
-      比分、半全场、总进球由泊松模型根据赛前赔率和近期战绩推算，未接入伤停、阵容和历史交锋。
-      赛程和赔率会变化，请以官方为准。
+      <b>竞彩参考，不是投注建议。</b> 数据来自 500.com 竞彩足球页面，中文队名和竞彩编号与体彩一致；
+      比分、半全场、总进球都使用对应玩法的真实赔率计算，未接入伤停、阵容和历史交锋。
+      赔率会变化，请以体彩官方为准。
     </div>
 
     <section class="card">
       <div class="fb-controls">
         <div class="field" style="margin:0;min-width:180px">
-          <label for="fbDate">比赛日期（北京时间）</label>
+          <label for="fbDate">比赛日期（销售日）</label>
           <input type="date" id="fbDate" />
         </div>
         <button class="primary" id="fbLoad" type="button" style="width:auto">获取当日比赛</button>
       </div>
-      <p class="hint" style="margin:8px 0 0">按北京时间筛选当天比赛；ESPN 赛程可能包含非竞彩场次，只做参考。</p>
+      <p class="hint" style="margin:8px 0 0">按竞彩销售日（周五/周六…）筛选，包含次日凌晨比赛，与体彩 app 的周X场次一致。</p>
     </section>
 
     <div id="fbMessage"></div>
@@ -896,8 +896,8 @@ function footballCard(match) {
   const timeText = Number.isNaN(kickoff.getTime())
     ? match.kickoff
     : kickoff.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
-  const home = match.home || {};
-  const away = match.away || {};
+  const home = typeof match.home === 'string' ? { name: match.home } : (match.home || {});
+  const away = typeof match.away === 'string' ? { name: match.away } : (match.away || {});
   const homeName = home.name_zh || home.name || '';
   const awayName = away.name_zh || away.name || '';
   const leagueName = match.league_zh || match.league || '足球';
@@ -907,7 +907,7 @@ function footballCard(match) {
       + '<span>主胜 ' + esc(analysis.probabilities.home) + '%</span>'
       + '<span>平 ' + esc(analysis.probabilities.draw) + '%</span>'
       + '<span>客胜 ' + esc(analysis.probabilities.away) + '%</span>'
-      + '<span>期望进球 ' + esc(analysis.expected_goals.home) + ' - ' + esc(analysis.expected_goals.away) + '</span>'
+      + (analysis.expected_goals != null ? '<span>期望总进球 ' + esc(analysis.expected_goals) + '</span>' : '')
       + '</div>';
   } else {
     oddsHtml = '<div class="fb-odds"><span class="pill warn">暂无赔率，数据不足</span></div>';
@@ -937,16 +937,14 @@ function footballCard(match) {
 
   return '<div class="fb-card">'
     + '<div class="fb-head"><span class="league">' + esc(leagueName) + '</span>'
-    + '<span class="time">' + esc(timeText) + '</span>'
-    + '<span class="pill">' + esc(match.odds ? (match.odds.provider || 'ESPN') : '无赔率') + '</span></div>'
+    + '<span class="time">' + esc(match.matchnum || '') + ' · ' + esc(timeText) + '</span>'
+    + '<span class="pill">' + esc(analysis ? '500.com 竞彩' : '无赔率') + '</span></div>'
     + '<div class="fb-teams">'
     + '<div class="fb-team"><div class="name" title="' + esc(home.name) + '">' + esc(homeName)
-    + '</div><div class="form">'
-    + esc(home.form || '近期战绩未知') + ' · ' + esc(home.record || '') + '</div></div>'
+    + '</div></div>'
     + '<div class="fb-vs">VS</div>'
     + '<div class="fb-team away"><div class="name" title="' + esc(away.name) + '">' + esc(awayName)
-    + '</div><div class="form">'
-    + esc(away.form || '近期战绩未知') + ' · ' + esc(away.record || '') + '</div></div>'
+    + '</div></div>'
     + '</div>' + oddsHtml + recs + basis + '</div>';
 }
 
@@ -956,13 +954,13 @@ function renderFootball(data) {
   $('fbMeta').classList.remove('hidden');
   $('fbMeta').innerHTML = '<h2>数据来源与说明</h2>'
     + '<div class="data-meta">'
-    + '来源：<b>' + esc(data.source_name || 'ESPN') + '</b>（非竞彩官方赛程）'
+    + '来源：<b>' + esc(data.source_name || '500.com 竞彩足球') + '</b>（第三方竞彩数据，页面队名/编号与体彩一致）'
     + (data.cached ? ' <span class="pill">本地缓存</span>' : ' <span class="pill ok">在线抓取</span>')
     + (data.stale ? ' <span class="pill warn">缓存/降级</span>' : '') + '<br />'
-    + '日期：<b>' + esc(data.date) + '</b> ｜ 比赛数：<b>' + matches.length + '</b>'
+    + '销售日：<b>' + esc(data.date) + '</b> ｜ 比赛数：<b>' + matches.length + '</b>'
     + ' ｜ 抓取时间：' + esc(formatTime(data.fetched_at)) + '<br />'
-    + '球队名优先显示中文，未收录的保留英文原名（悬停可看原名）。<br />'
-    + '接口：<a href="' + esc(data.source || '#') + '" target="_blank" rel="noreferrer">ESPN scoreboard</a>'
+    + '竞彩编号、联赛和球队名来自 500.com；比分/半全场/总进球为对应玩法赔率去抽水后的隐含概率。<br />'
+    + '接口：<a href="' + esc(data.source || '#') + '" target="_blank" rel="noreferrer">500.com 竞彩足球</a>'
     + (data.truncated ? '<br />场次较多，只显示前 24 场有数据/待分析的比赛。' : '')
     + (data.warning ? '<br /><span style="color:#a86800">' + esc(data.warning) + '</span>' : '')
     + '</div>';

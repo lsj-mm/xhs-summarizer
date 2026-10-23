@@ -350,7 +350,7 @@ async def lottery_check(record_id: str, payload: dict | None = None) -> dict:
 
 @app.get("/api/football/daily")
 async def football_daily(day: str = "") -> dict:
-    """ESPN 公开赛程 + 赔率，返回当日足球分析。"""
+    """500.com 竞彩赛程/赔率，返回当日足球分析。"""
     target = day or dt.date.today().isoformat()
     try:
         return await asyncio.to_thread(football_mod.daily, target, config_mod.load())

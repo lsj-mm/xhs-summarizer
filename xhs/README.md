@@ -27,7 +27,7 @@ resolve.py → download.py → audio.py → asr.py → summarize.py → github.p
 | `xunfei.py` | 讯飞语音评测：HMAC 签名、16k PCM 分帧、XML 分数/词/音素解析 |
 | `keywords.py` | 多语言关键字：AI 解释、GitHub Search API 代理请求 |
 | `lottery.py` | 彩票模拟：官方历史数据抓取/缓存、走势统计、注数公式、模拟选号 |
-| `football.py` | 竞彩足球参考：ESPN 赛程/赔率、泊松模型、比分/半全场/总进球 |
+| `football.py` | 竞彩足球参考：500.com 赛程/赔率、比分/半全场/总进球 |
 
 ## 约定
 
