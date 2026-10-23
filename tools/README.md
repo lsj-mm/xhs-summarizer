@@ -9,6 +9,7 @@
 | `check_readback.js` | 跟读匹配回归测试：完全匹配、漏词、多词、用错词、词序、空结果 | `node tools/check_readback.js` |
 | `check_pronounce.py` | Azure 发音评测离线测试：假响应验证请求地址、`format=detailed`、WAV 类型、分数/音素解析 | `python tools/check_pronounce.py` |
 | `check_xunfei.py` | 讯飞语音评测离线测试：签名 URL、PCM 分帧、XML 分数/词/音素解析、未配置提示 | `python tools/check_xunfei.py` |
+| `check_lottery.py` | 彩票离线测试：注数公式、号码范围、胆拖约束、随机种子可复现 | `python tools/check_lottery.py` |
 
 `check_pronounce.py` 和 `check_xunfei.py` 都不联网、不消耗 Azure/讯飞额度；`selfcheck.py` 也不联网、不用 API key。
 

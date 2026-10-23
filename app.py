@@ -27,6 +27,7 @@ from xhs import config as config_mod
 from xhs import english as english_mod
 from xhs import jobs as jobs_mod
 from xhs import keywords as keywords_mod
+from xhs import lottery as lottery_mod
 from xhs import pipeline as pipeline_mod
 from xhs import pronounce as pronounce_mod
 from xhs import summarize as summarize_mod
@@ -267,6 +268,37 @@ async def keywords_github(q: str = "", limit: int = 5) -> dict:
     except Exception as exc:
         LOG.exception("GitHub 搜索失败")
         return {"ok": False, "error": f"GitHub 搜索失败：{exc}"}
+
+
+# ------------------------------------------------------------------ 彩票
+
+@app.get("/api/lottery/games")
+async def lottery_games() -> dict:
+    """彩种与玩法规则，不触发历史数据请求。"""
+    return {"ok": True, "games": lottery_mod.public_games()}
+
+
+@app.post("/api/lottery/simulate")
+async def lottery_simulate(payload: dict) -> dict:
+    """基于官方历史数据生成模拟摇号结果。"""
+    body = payload or {}
+    try:
+        return await asyncio.to_thread(
+            lottery_mod.simulate,
+            body.get("game") or "dlt",
+            body.get("play") or "single",
+            body.get("params") or {},
+            body.get("strategy") or "hot",
+            body.get("window") or 100,
+            body.get("seed"),
+            bool(body.get("append")),
+            config_mod.load(),
+        )
+    except lottery_mod.LotteryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("彩票模拟摇号失败")
+        raise HTTPException(status_code=502, detail=f"模拟摇号暂时不可用：{exc}") from exc
 
 
 # ------------------------------------------------------------------ 作业

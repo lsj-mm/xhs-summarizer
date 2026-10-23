@@ -26,6 +26,7 @@ resolve.py → download.py → audio.py → asr.py → summarize.py → github.p
 | `pronounce.py` | 发音评测分发：Azure Pronunciation Assessment / 讯飞 |
 | `xunfei.py` | 讯飞语音评测：HMAC 签名、16k PCM 分帧、XML 分数/词/音素解析 |
 | `keywords.py` | 多语言关键字：AI 解释、GitHub Search API 代理请求 |
+| `lottery.py` | 彩票模拟：官方历史数据抓取/缓存、走势统计、注数公式、模拟选号 |
 
 ## 约定
 

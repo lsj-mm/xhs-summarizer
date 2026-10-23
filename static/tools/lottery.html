@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>彩票模拟摇号</title>
+<link rel="stylesheet" href="/static/tools/_shared/base.css" />
+<style>
+  .wrap{max-width:1120px; margin:0 auto; padding:24px 20px 56px}
+  header.top{display:flex; align-items:center; gap:12px; margin-bottom:14px}
+  header.top .logo{
+    width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#e5484d);
+    display:flex;align-items:center;justify-content:center;font-size:21px;flex:0 0 auto;
+  }
+  header.top h1{font-size:18px;margin:0;font-weight:650}
+  header.top .sub{color:var(--muted);font-size:12.5px}
+  .grow{flex:1}
+  .warn{
+    background:#fffaf0; border:1px solid #f0dcb4; color:#7a5500; border-radius:10px;
+    padding:10px 13px; font-size:12.5px; line-height:1.65; margin-bottom:14px;
+  }
+  .layout{display:grid; grid-template-columns:320px minmax(0,1fr); gap:16px; align-items:start}
+  .side .card{padding:16px}
+  .side h2{font-size:12.5px; margin:0 0 8px; color:var(--muted); font-weight:650}
+  .field{margin-bottom:12px}
+  .field label{display:block; font-size:12.5px; font-weight:600; margin-bottom:5px}
+  .field input,.field select{
+    width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px;
+    font-family:inherit; font-size:13px; background:#fff; color:var(--ink);
+  }
+  .field input:focus,.field select:focus{outline:2px solid rgba(37,99,235,.18); border-color:var(--accent)}
+  .seg{display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; border:1px solid var(--line);
+    border-radius:9px; padding:3px; background:#f8f9fb; margin-bottom:14px}
+  .seg button{
+    font-family:inherit; font-size:12px; padding:8px 4px; border:0; border-radius:7px;
+    background:transparent; color:var(--muted); cursor:pointer;
+  }
+  .seg button.on{background:#fff; color:var(--ink); font-weight:650; box-shadow:0 1px 2px rgba(16,24,40,.08)}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .chk{display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; margin:10px 0 14px}
+  .chk input{width:auto}
+  button.primary{
+    width:100%; font-family:inherit; font-size:13.5px; font-weight:600; padding:11px 16px;
+    border-radius:9px; border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer;
+  }
+  button.primary:hover{background:var(--accent-dark)}
+  button.primary:disabled{opacity:.55; cursor:not-allowed}
+  .hint{color:var(--muted); font-size:11.5px; line-height:1.65}
+  .rules{margin:12px 0 0; padding-top:10px; border-top:1px dashed var(--line)}
+  .pill{display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:999px;
+    font-size:11px; background:#f1f2f5; color:var(--muted)}
+  .pill.ok{background:#e7f7ee; color:#0f7b3d}
+  .pill.warn{background:#fff5e5; color:#8a6100}
+  .pill.err{background:#fdecea; color:#b42318}
+  .card h2{font-size:13px; margin:0 0 12px; font-weight:650; color:var(--muted)}
+  .data-meta{font-size:12.5px; color:var(--muted); line-height:1.8}
+  .data-meta b{color:var(--ink)}
+  .data-meta a{color:var(--accent-dark); word-break:break-all}
+  .summary{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:14px}
+  .summary .item{background:#fafbfc; border:1px solid var(--line); border-radius:9px; padding:10px 12px}
+  .summary .k{font-size:11.5px; color:var(--muted)}
+  .summary .v{font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:2px}
+  .ball{
+    display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;
+    border-radius:50%; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums;
+    margin:2px 3px 2px 0; color:#fff; flex:0 0 auto;
+  }
+  .ball.red{background:#e5484d}
+  .ball.blue{background:#2f6fed}
+  .ball.gold{background:#f5a524; color:#3b2500}
+  .ball.small{width:25px;height:25px;font-size:11px;margin:1px 2px 1px 0}
+  .ball.plain{background:#eef1f6;color:var(--muted)}
+  .ticket{border:1px solid var(--line); border-radius:10px; padding:11px 13px; margin-bottom:9px; background:#fcfcfd}
+  .ticket-head{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:7px; font-size:12.5px}
+  .ticket-head b{font-size:13px}
+  .ticket-row{font-size:12.5px; line-height:1.9}
+  .ticket-row .lab{color:var(--muted); display:inline-block; min-width:44px}
+  .stats-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .stat-box{background:#fafbfc; border:1px solid var(--line); border-radius:9px; padding:10px 12px}
+  .stat-box h3{margin:0 0 6px; font-size:12px; color:var(--muted); font-weight:650}
+  .chips{display:flex; flex-wrap:wrap; gap:4px}
+  .stat-line{font-size:12.5px; line-height:1.9; color:var(--ink)}
+  .stat-line span{color:var(--muted)}
+  .recent{width:100%; border-collapse:collapse; font-size:12px}
+  .recent th,.recent td{text-align:left; padding:5px 6px; border-bottom:1px solid var(--line); white-space:nowrap}
+  .recent th{color:var(--muted); font-weight:600}
+  .empty{text-align:center; color:var(--muted); padding:36px 14px; font-size:13px}
+  .empty .big{font-size:34px; margin-bottom:6px}
+  .loading{color:var(--muted); font-size:13px; padding:10px 0}
+  .err{background:#fff7f6; border:1px solid #f3c9c4; color:#a4261b; border-radius:9px; padding:10px 12px;
+    font-size:12.5px; white-space:pre-wrap; line-height:1.7}
+  .notes{margin:12px 0 0; padding-left:18px; color:var(--muted); font-size:11.5px; line-height:1.8}
+  .disclaimer{margin-top:16px; text-align:center; color:#8a90a0; font-size:11.5px; line-height:1.7}
+  .hidden{display:none !important}
+  @media (max-width:860px){
+    .layout{grid-template-columns:1fr}
+    .stats-grid{grid-template-columns:1fr}
+    .side{order:0}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">🎲</div>
+    <div>
+      <h1>彩票模拟摇号</h1>
+      <div class="sub">大乐透 · 双色球 · 快乐8｜真实历史数据 · 走势统计 · 仅供娱乐</div>
+    </div>
+    <div class="grow"></div>
+    <span class="pill">不预测开奖</span>
+  </header>
+
+  <div class="warn">
+    <b>娱乐参考，不是购彩建议。</b> 彩票每期独立随机，历史冷热、遗漏、和值不能预测下一期结果。
+    本工具只做规则内的模拟选号和统计展示，请理性对待。
+  </div>
+
+  <div class="layout">
+    <aside class="side">
+      <div class="card">
+        <h2>彩种</h2>
+        <div class="seg" id="gameTabs"></div>
+
+        <div class="field">
+          <label for="playSelect">玩法</label>
+          <select id="playSelect"></select>
+        </div>
+
+        <div id="paramFields"></div>
+
+        <div class="row2">
+          <div class="field">
+            <label for="strategy">选号策略</label>
+            <select id="strategy">
+              <option value="random">随机均匀</option>
+              <option value="hot" selected>热号加权</option>
+              <option value="cold">冷号加权</option>
+              <option value="trend">近期趋势</option>
+              <option value="balanced">区间均衡</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="window">统计期数</label>
+            <select id="window">
+              <option value="30">最近 30 期</option>
+              <option value="50">最近 50 期</option>
+              <option value="100" selected>最近 100 期</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="seedInput">随机种子（可选）</label>
+          <input id="seedInput" type="text" placeholder="留空自动生成，用于复现" autocomplete="off" />
+        </div>
+
+        <label class="chk" id="appendWrap">
+          <input type="checkbox" id="appendInput" />
+          追加投注（大乐透，3 元/注）
+        </label>
+
+        <button class="primary" id="generateBtn">生成模拟号码</button>
+        <p class="hint rules" id="rulesNote"></p>
+      </div>
+    </aside>
+
+    <main>
+      <div id="message"></div>
+
+      <section class="card hidden" id="dataCard"></section>
+      <section class="card hidden" id="statsCard"></section>
+
+      <section class="card" id="resultCard">
+        <div class="empty">
+          <div class="big">🎲</div>
+          <div>选好彩种和玩法，点「生成模拟号码」。</div>
+          <div style="margin-top:6px">会先读取官方历史开奖，再按策略生成号码。</div>
+        </div>
+      </section>
+
+      <p class="disclaimer">模拟结果仅供娱乐参考，不构成任何购彩建议。请理性购彩，量力而行。</p>
+    </main>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const $ = (id) => document.getElementById(id);
+const PLAY_NAMES = {
+  single: '单式',
+  multiple: '单式多注',
+  compound: '复式',
+  dantuo: '胆拖',
+  package: '套餐票（模拟）'
+};
+const state = {
+  games: null,
+  game: 'dlt',
+  play: 'single',
+  result: null,
+  loading: false
+};
+
+function esc(text) {
+  return String(text == null ? '' : text).replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
+function pad(n) {
+  return String(n).padStart(2, '0');
+}
+
+function ball(n, color, small) {
+  return '<span class="ball ' + color + (small ? ' small' : '') + '">' + pad(n) + '</span>';
+}
+
+function balls(nums, color) {
+  return (nums || []).map((n) => ball(n, color)).join('');
+}
+
+function formatTime(iso) {
+  if (!iso) return '未知';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString('zh-CN', { hour12: false });
+}
+
+function setMessage(html) {
+  $('message').innerHTML = html || '';
+}
+
+function gameSpec() {
+  return state.games ? state.games[state.game] : null;
+}
+
+function playName(play) {
+  return PLAY_NAMES[play] || play;
+}
+
+function renderTabs() {
+  if (!state.games) return;
+  $('gameTabs').innerHTML = Object.entries(state.games).map(([key, game]) =>
+    '<button type="button" data-game="' + key + '" class="' + (key === state.game ? 'on' : '') + '">'
+    + esc(game.name) + '</button>'
+  ).join('');
+}
+
+function renderPlayOptions() {
+  const spec = gameSpec();
+  if (!spec) return;
+  const plays = spec.plays || [];
+  if (!plays.includes(state.play)) state.play = plays[0] || 'single';
+  $('playSelect').innerHTML = plays.map((play) =>
+    '<option value="' + play + '"' + (play === state.play ? ' selected' : '') + '>'
+    + esc(playName(play)) + '</option>'
+  ).join('');
+}
+
+function rangeText(min, max) {
+  return min + ' ~ ' + max;
+}
+
+function renderFields() {
+  const spec = gameSpec();
+  if (!spec) return;
+  const play = state.play;
+  let html = '';
+
+  if (play === 'single' || play === 'multiple') {
+    html += '<div class="field"><label for="f_count">注数</label>'
+      + '<input id="f_count" type="number" min="1" max="20" step="1" value="1" /></div>';
+    if (state.game === 'kl8') {
+      html += '<div class="field"><label for="f_pick">选号个数（1~10）</label>'
+        + '<input id="f_pick" type="number" min="1" max="10" step="1" value="5" /></div>';
+    }
+  } else if (play === 'package') {
+    html += '<div class="field"><label for="f_count">套餐注数（模拟）</label>'
+      + '<select id="f_count"><option value="5">5 注</option><option value="10" selected>10 注</option>'
+      + '<option value="20">20 注</option></select></div>';
+    if (state.game === 'kl8') {
+      html += '<div class="field"><label for="f_pick">选号个数（1~10）</label>'
+        + '<input id="f_pick" type="number" min="1" max="10" step="1" value="5" /></div>';
+    }
+  } else if (play === 'compound') {
+    const c = spec.compound || {};
+    html += '<div class="field"><label for="f_main_count">' + esc(spec.main_label)
+      + '个数（' + rangeText(c.main_min, c.main_max) + '）</label>'
+      + '<input id="f_main_count" type="number" min="' + c.main_min + '" max="' + c.main_max
+      + '" step="1" value="' + c.main_min + '" /></div>';
+    html += '<div class="field"><label for="f_extra_count">' + esc(spec.extra_label)
+      + '个数（' + rangeText(c.extra_min, c.extra_max) + '）</label>'
+      + '<input id="f_extra_count" type="number" min="' + c.extra_min + '" max="' + c.extra_max
+      + '" step="1" value="' + c.extra_min + '" /></div>';
+  } else if (play === 'dantuo') {
+    const danMax = state.game === 'dlt' ? 4 : 5;
+    html += '<div class="field"><label for="f_main_dan">' + esc(spec.main_label)
+      + '胆码个数（1~' + danMax + '）</label>'
+      + '<input id="f_main_dan" type="number" min="1" max="' + danMax + '" step="1" value="2" /></div>';
+    html += '<div class="field"><label for="f_main_tuo">' + esc(spec.main_label)
+      + '拖码个数</label><input id="f_main_tuo" type="number" min="2" max="12" step="1" value="4" /></div>';
+    if (state.game === 'ssq') {
+      html += '<div class="field"><label for="f_extra_count">蓝球个数（1~6）</label>'
+        + '<input id="f_extra_count" type="number" min="1" max="6" step="1" value="1" /></div>';
+    } else {
+      html += '<p class="hint" style="margin:-4px 0 12px">大乐透后区固定 2 个号；本工具只做前区胆拖。</p>';
+    }
+  }
+
+  $('paramFields').innerHTML = html;
+  $('appendWrap').style.display = state.game === 'dlt' ? 'flex' : 'none';
+  $('rulesNote').textContent = ruleNote();
+}
+
+function ruleNote() {
+  const spec = gameSpec();
+  if (!spec) return '';
+  if (state.game === 'dlt') {
+    return '规则：前区 5/35，后区 2/12；单注 2 元，追加 3 元。'
+      + '复式上限为前区 12、后区 6（本工具保护值）。';
+  }
+  if (state.game === 'ssq') {
+    return '规则：红球 6/33，蓝球 1/16；单注 2 元。'
+      + '复式上限为红球 12、蓝球 6（本工具保护值）。';
+  }
+  return '规则：1~80 中选 1~10 个号码，单注 2 元；本工具提供选 1~选 10 单式、多注和模拟套餐。';
+}
+
+function renderAll() {
+  renderTabs();
+  renderPlayOptions();
+  renderFields();
+}
+
+function numberValue(id, fallback) {
+  const el = $(id);
+  if (!el) return fallback;
+  const value = Number(el.value);
+  return Number.isFinite(value) ? Math.round(value) : fallback;
+}
+
+function collectParams() {
+  const spec = gameSpec();
+  const play = state.play;
+  if (!spec) return null;
+  if (play === 'single' || play === 'multiple' || play === 'package') {
+    const params = { count: numberValue('f_count', 1) };
+    if (state.game === 'kl8') params.pick = numberValue('f_pick', 5);
+    return params;
+  }
+  if (play === 'compound') {
+    return {
+      main_count: numberValue('f_main_count', spec.compound.main_min),
+      extra_count: numberValue('f_extra_count', spec.compound.extra_min)
+    };
+  }
+  if (play === 'dantuo') {
+    const params = {
+      main_dan: numberValue('f_main_dan', 2),
+      main_tuo: numberValue('f_main_tuo', 4)
+    };
+    if (state.game === 'ssq') params.extra_count = numberValue('f_extra_count', 1);
+    return params;
+  }
+  return null;
+}
+
+function renderData(data) {
+  const d = data.data || {};
+  const stale = d.stale ? ' <span class="pill warn">缓存/降级</span>' : '';
+  const cached = d.cached ? ' <span class="pill">本地缓存</span>' : ' <span class="pill ok">在线抓取</span>';
+  $('dataCard').classList.remove('hidden');
+  $('dataCard').innerHTML = '<h2>数据来源与截止时间</h2>'
+    + '<div class="data-meta">'
+    + '数据源：<b>' + esc(d.source_name || '官方公开接口') + '</b>' + stale + cached + '<br />'
+    + '最新期号：<b>' + esc(d.latest_issue || '—') + '</b> ｜ 开奖日期：<b>' + esc(d.latest_date || '—') + '</b><br />'
+    + '统计区间：最近 <b>' + esc(d.window || '—') + '</b> 期 ｜ 抓取时间：' + esc(formatTime(d.fetched_at)) + '<br />'
+    + '接口：<a href="' + esc(d.source || '#') + '" target="_blank" rel="noreferrer">' + esc(d.source_name || '官方接口') + '</a>'
+    + (d.warning ? '<br /><span style="color:#a86800">' + esc(d.warning) + '</span>' : '')
+    + '</div>';
+}
+
+function statBox(title, body) {
+  return '<div class="stat-box"><h3>' + esc(title) + '</h3>' + body + '</div>';
+}
+
+function renderStats(stats, data) {
+  if (!stats) return;
+  const mainHot = (stats.main.hot || []).map((n) => ball(n, 'red', true)).join('');
+  const mainCold = (stats.main.cold || []).map((n) => ball(n, 'plain', true)).join('');
+  const extraStats = stats.extra;
+  const extraHot = extraStats ? (extraStats.hot || []).map((n) => ball(n, 'blue', true)).join('') : '';
+  const extraCold = extraStats ? (extraStats.cold || []).map((n) => ball(n, 'plain', true)).join('') : '';
+  const last = stats.last || {};
+  const lastBalls = balls(last.main, 'red') + balls(last.extra, 'blue');
+  const recentRows = (stats.recent || []).map((d) =>
+    '<tr><td>' + esc(d.issue) + '</td><td>' + esc(d.date) + '</td><td>'
+    + balls(d.main, 'red').replace(/class="ball red"/g, 'class="ball red small"')
+    + balls(d.extra, 'blue').replace(/class="ball blue"/g, 'class="ball blue small"')
+    + '</td></tr>'
+  ).join('');
+
+  $('statsCard').classList.remove('hidden');
+  $('statsCard').innerHTML = '<h2>走势统计（' + esc(data.window) + ' 期）</h2>'
+    + '<div class="stats-grid">'
+    + statBox('热号（' + esc(gameSpec().main_label) + '）', '<div class="chips">' + mainHot + '</div>')
+    + statBox('冷号（' + esc(gameSpec().main_label) + '）', '<div class="chips">' + mainCold + '</div>')
+    + statBox('和值', '<div class="stat-line">平均 <b>' + esc(stats.sum.avg) + '</b><br />'
+      + '<span>最低 ' + esc(stats.sum.min) + ' ｜ 最高 ' + esc(stats.sum.max)
+      + ' ｜ 上期 ' + esc(stats.sum.last) + '</span></div>')
+    + statBox('上期结构', '<div class="stat-line">奇偶 <b>' + esc(stats.odd_even.odd)
+      + ' : ' + esc(stats.odd_even.even) + '</b><br />'
+      + '<span>三区 ' + esc((stats.zones || []).join(' / ')) + ' ｜ 连号 ' + esc(stats.consecutive)
+      + ' ｜ 重号 ' + esc(stats.repeat) + '</span></div>')
+    + (extraStats ? statBox('热号（' + esc(gameSpec().extra_label) + '）', '<div class="chips">' + extraHot + '</div>') : '')
+    + (extraStats ? statBox('冷号（' + esc(gameSpec().extra_label) + '）', '<div class="chips">' + extraCold + '</div>') : '')
+    + '</div>'
+    + '<div style="margin-top:12px"><h3 style="font-size:12px;color:var(--muted);margin:0 0 6px">上期开奖</h3>'
+    + '<div>' + lastBalls + '</div></div>'
+    + (recentRows ? '<div style="margin-top:12px"><h3 style="font-size:12px;color:var(--muted);margin:0 0 4px">最近 5 期</h3>'
+      + '<table class="recent"><thead><tr><th>期号</th><th>日期</th><th>开奖号码</th></tr></thead><tbody>'
+      + recentRows + '</tbody></table></div>' : '');
+}
+
+function renderTicket(ticket, index, spec) {
+  const kind = ticket.kind || 'single';
+  const label = kind === 'single' ? '第 ' + (index + 1) + ' 注'
+    : (kind === 'dantuo' ? '胆拖选择' : '复式选择');
+  let body = '';
+  if (kind === 'dantuo') {
+    body += '<div class="ticket-row"><span class="lab">胆码</span>' + balls(ticket.dan, 'gold') + '</div>';
+    body += '<div class="ticket-row"><span class="lab">拖码</span>' + balls(ticket.tuo, 'red') + '</div>';
+  } else {
+    body += '<div class="ticket-row"><span class="lab">' + esc(spec.main_label) + '</span>'
+      + balls(ticket.main, 'red') + '</div>';
+  }
+  if (ticket.extra && ticket.extra.length) {
+    body += '<div class="ticket-row"><span class="lab">' + esc(spec.extra_label) + '</span>'
+      + balls(ticket.extra, 'blue') + '</div>';
+  }
+  return '<div class="ticket"><div class="ticket-head"><b>' + label + '</b></div>' + body + '</div>';
+}
+
+function renderResult(data) {
+  const spec = gameSpec();
+  const tickets = data.tickets || [];
+  const summary = '<div class="summary">'
+    + '<div class="item"><div class="k">注数</div><div class="v">' + esc(data.bet_count) + '</div></div>'
+    + '<div class="item"><div class="k">单注金额</div><div class="v">' + esc(data.unit_price) + ' 元</div></div>'
+    + '<div class="item"><div class="k">模拟金额</div><div class="v">' + esc(data.amount) + ' 元</div></div>'
+    + '<div class="item"><div class="k">随机种子</div><div class="v" style="font-size:13px;word-break:break-all">'
+    + esc(data.seed) + '</div></div>'
+    + '</div>';
+
+  let body = '';
+  if (data.selection && data.play === 'compound') {
+    body += '<div class="ticket"><div class="ticket-head"><b>复式选择</b>'
+      + '<span class="pill">' + esc(spec.main_label) + ' ' + data.params.main_count + ' 个 ｜ '
+      + esc(spec.extra_label) + ' ' + data.params.extra_count + ' 个</span></div>'
+      + '<div class="ticket-row"><span class="lab">' + esc(spec.main_label) + '</span>'
+      + balls(data.selection.main, 'red') + '</div>'
+      + '<div class="ticket-row"><span class="lab">' + esc(spec.extra_label) + '</span>'
+      + balls(data.selection.extra, 'blue') + '</div></div>';
+  } else {
+    body = tickets.map((ticket, index) => renderTicket(ticket, index, spec)).join('');
+  }
+
+  const notes = (data.notes || []).map((note) => '<li>' + esc(note) + '</li>').join('');
+  $('resultCard').innerHTML = '<h2>' + esc(data.game_name) + ' · ' + esc(data.play_name)
+    + ' · ' + esc(data.strategy_name) + '</h2>'
+    + summary + body
+    + '<p class="hint" style="margin:10px 0 0">'
+    + (data.append ? '已按追加投注计算金额。' : '未追加投注。')
+    + ' 复式/胆拖显示的是选号集合，注数按组合公式计算。</p>'
+    + '<ul class="notes">' + notes + '</ul>';
+}
+
+async function generate() {
+  if (state.loading) return;
+  const spec = gameSpec();
+  const params = collectParams();
+  if (!spec || !params) return;
+
+  state.loading = true;
+  $('generateBtn').disabled = true;
+  $('generateBtn').textContent = '正在获取历史数据并生成…';
+  setMessage('<div class="loading">正在读取官方历史开奖数据，首次可能需要几秒…</div>');
+
+  try {
+    const response = await fetch('/api/lottery/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        game: state.game,
+        play: state.play,
+        params,
+        strategy: $('strategy').value,
+        window: Number($('window').value),
+        seed: $('seedInput').value.trim(),
+        append: $('appendInput').checked
+      })
+    });
+    let data = {};
+    try { data = await response.json(); } catch (err) { /* 统一处理 */ }
+    if (!response.ok) throw new Error((data && data.detail) || ('请求失败（HTTP ' + response.status + '）'));
+    if (!data.ok) throw new Error((data && data.error) || '没有返回结果');
+
+    state.result = data;
+    setMessage('');
+    renderData(data);
+    renderStats(data.stats, data.data);
+    renderResult(data);
+    $('dataCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (err) {
+    setMessage('<div class="err">' + esc(err && err.message ? err.message : String(err)) + '</div>');
+  } finally {
+    state.loading = false;
+    $('generateBtn').disabled = false;
+    $('generateBtn').textContent = '生成模拟号码';
+  }
+}
+
+$('gameTabs').addEventListener('click', (event) => {
+  const btn = event.target.closest('button[data-game]');
+  if (!btn) return;
+  state.game = btn.getAttribute('data-game');
+  state.play = 'single';
+  state.result = null;
+  setMessage('');
+  $('dataCard').classList.add('hidden');
+  $('statsCard').classList.add('hidden');
+  renderAll();
+});
+
+$('playSelect').addEventListener('change', () => {
+  state.play = $('playSelect').value;
+  state.result = null;
+  setMessage('');
+  renderFields();
+});
+
+$('generateBtn').addEventListener('click', generate);
+
+async function boot() {
+  try {
+    const response = await fetch('/api/lottery/games');
+    const data = await response.json();
+    if (!data.ok || !data.games) throw new Error('彩种规则加载失败');
+    state.games = data.games;
+    state.game = 'dlt';
+    state.play = 'single';
+    renderAll();
+  } catch (err) {
+    setMessage('<div class="err">' + esc(err && err.message ? err.message : String(err)) + '</div>');
+    $('generateBtn').disabled = true;
+  }
+}
+
+boot();
+</script>
+</body>
+</html>

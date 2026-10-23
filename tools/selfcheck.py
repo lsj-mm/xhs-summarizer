@@ -653,10 +653,10 @@ def main() -> int:
     import app as app_mod  # noqa: PLC0415  导入即构建应用，离线不影响
 
     tool_list = app_mod.discover_tools()
-    check(len(tool_list) >= 4, "扫描到至少四个工具",
+    check(len(tool_list) >= 5, "扫描到至少五个工具",
           "、".join(f"{t['icon']}{t['name']}" for t in tool_list))
-    check([t["id"] for t in tool_list] == ["notes", "tax-calc", "english", "keywords"],
-          "按 order 排序（笔记、税率计算、编程英语、多语言关键字）",
+    check([t["id"] for t in tool_list] == ["notes", "tax-calc", "english", "keywords", "lottery"],
+          "按 order 排序（笔记、税率、英语、关键字、彩票）",
           "、".join(t["id"] for t in tool_list))
     check(all((app_mod.TOOLS_DIR / f"{t['id']}.html").is_file() for t in tool_list),
           "每个工具都有对应的页面文件")
@@ -758,6 +758,16 @@ def main() -> int:
           "关键字查询的后端逻辑在 xhs/keywords.py")
     check((PROJECT_ROOT / "static" / "tools" / "_shared" / "keywords-data.js").is_file(),
           "本地关键字词库 keywords-data.js 存在")
+
+    lottery_html = (app_mod.TOOLS_DIR / "lottery.html").read_text(encoding="utf-8")
+    check("彩票模拟摇号" in lottery_html and "/api/lottery/simulate" in lottery_html,
+          "彩票工具页已接入 /api/lottery/simulate")
+    check((PROJECT_ROOT / "xhs" / "lottery.py").is_file(),
+          "彩票历史数据、注数公式与模拟算法在 xhs/lottery.py")
+    check((PROJECT_ROOT / "tools" / "check_lottery.py").is_file(),
+          "彩票注数/范围/可复现性有离线测试")
+    check((app_mod.TOOLS_DIR / "lottery.meta.json").is_file(),
+          "彩票工具有 meta.json")
 
     file_server.shutdown()
     stub_server.shutdown()

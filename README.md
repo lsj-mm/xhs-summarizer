@@ -9,11 +9,12 @@
 | 💰 税率计算 | 五合一：工资/个税（含年终奖对比）· 房贷（含组合贷）· 提前还款 · 车贷（含真实年化）· 增值税换算；打开后用顶部标签页切换 |
 | 📚 编程英语 | 编程词汇查询 + 技术例句 + 日常口语练习；复用已配置的 DeepSeek，中文讲解 |
 | 🔎 多语言关键字 | Python / C++ / Java / 前端 / MySQL / Go 关键字速查，含 AI 补充解释与真实 GitHub API 示例 |
+| 🎲 彩票模拟摇号 | 大乐透 / 双色球 / 快乐8：官方历史数据、走势统计、单式/复式/胆拖模拟，仅供娱乐 |
 
 「税率计算」的五个标签页也可以用地址直接打开，例如 `#/salary`、`#/mortgage`、`#/prepay`、`#/carloan`、`#/vat`。
 
 再加新工具**不用改任何代码**，详见「怎么再加一个工具」一节。
-下面先讲税率计算，再讲编程英语、多语言关键字和小红书视频转笔记。
+下面先讲税率计算，再讲编程英语、多语言关键字、彩票模拟和小红书视频转笔记。
 
 ---
 
@@ -183,6 +184,31 @@ $env:XUNFEI_API_SECRET="你的 APISecret"
 
 实现：`static/tools/keywords.html`、`static/tools/_shared/keywords-data.js`、`xhs/keywords.py`；
 接口 `POST /api/keywords/ai`、`GET /api/keywords/github`。
+
+---
+
+## 彩票模拟摇号
+
+一个基于官方历史开奖数据的娱乐性模拟选号工具，覆盖 **大乐透 / 双色球 / 快乐8**。
+
+- **大乐透**：单式、单式多注、复式、前区胆拖、模拟套餐；单注 2 元，追加 3 元/注。
+- **双色球**：单式、单式多注、复式、红球胆拖、模拟套餐；单注 2 元。
+- **快乐8**：选 1 ~ 选 10、单式多注、模拟套餐；单注 2 元。
+- **数据来源**：中国体育彩票、中国福利彩票官方公开历史开奖接口；缓存到 `work/lottery/`，
+  默认 6 小时内复用，页面显示最新期号、开奖日期、抓取时间；接口失败时用缓存并明确提示。
+- **走势统计**：冷热号、遗漏值、和值、奇偶比、三区分布、连号、重号，以及最近 5 期开奖。
+- **选号策略**：随机均匀、热号加权、冷号加权、近期趋势、区间均衡；随机种子可填写，填相同种子可复现。
+- **注数计算**：复式按组合公式展开，胆拖按 `C(拖码, 需要补足的数量)` 计算；金额 = 注数 × 单注金额。
+
+**注意**：
+
+- 复式/胆拖数量上限是本工具为控制注数设置的保护值，不是官方上限，具体以官方规则为准；
+- 大乐透这里只做前区胆拖，后区固定 2 个号；
+- 套餐票在本工具里是「N 注单式」的模拟套餐，不是官方套餐产品；
+- 所有结果**仅供娱乐参考，不预测开奖，不构成任何购彩建议**。
+
+实现：`xhs/lottery.py`、`static/tools/lottery.html`；接口 `GET /api/lottery/games`、
+`POST /api/lottery/simulate`；离线测试 `python tools/check_lottery.py`。
 
 ---
 
@@ -369,7 +395,7 @@ python tools/selfcheck.py
 node tools/check_finance.js
 ```
 
-**验证状态**：离线自检 114 项、HTTP 接口层 12 项均通过。另外用一条真实公开笔记跑了完整链路
+**验证状态**：离线自检 118 项、HTTP 接口层 12 项均通过。另外用一条真实公开笔记跑了完整链路
 （短链跟跳转 → 下载 9.0 MB / 时长 02:34 → 标题、作者、正文、发布日期全部取对 → 提取出 4 个工具
 → 用**真实 GitHub 接口**核实链接 → 生成 md：REA、Ghidra 都正确匹配到仓库，另外两个老实写「未找到」）。
 转写与总结两步用的是本地假服务替身，未消耗任何额度；真实付费接口的表现取决于你的 key 与账户状态。
@@ -469,6 +495,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `pronounce.py` | 发音评测分发：Azure Pronunciation Assessment / 讯飞 |
 | `xunfei.py` | 讯飞语音评测：HMAC 鉴权、PCM 分帧、XML 结果解析 |
 | `keywords.py` | 多语言关键字：AI 解释 + GitHub API 搜索示例 |
+| `lottery.py` | 彩票模拟：官方历史数据、走势统计、注数公式、模拟选号 |
 | `jobs.py` | 作业状态与事件总线（SSE 历史/增量） |
 | `pipeline.py` | 把解析、下载、转写、总结、落盘串成流水线 |
 | `sandbox.py` | 临时目录权限兼容补丁 |
@@ -486,6 +513,8 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `tools/english.meta.json` | 编程英语工具的列表元数据 |
 | `tools/keywords.html` | 多语言关键字：本地速查、AI 解释、GitHub API 示例 |
 | `tools/keywords.meta.json` | 多语言关键字工具的列表元数据 |
+| `tools/lottery.html` | 彩票模拟摇号：大乐透/双色球/快乐8、玩法参数、走势与结果 |
+| `tools/lottery.meta.json` | 彩票模拟工具的列表元数据 |
 | `tools/_shared/base.css` | 各工具共用的基础样式 |
 | `tools/_shared/finance.js` | 金融计算纯函数：个税、社保、摊还、提前还款、IRR |
 | `tools/_shared/loan-ui.js` | 房贷/车贷/提前还款共用的结果渲染 |
@@ -503,6 +532,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `check_readback.js` | 跟读匹配回归测试（node 跑） |
 | `check_pronounce.py` | Azure 发音评测离线测试（假响应） |
 | `check_xunfei.py` | 讯飞语音评测离线测试（假响应） |
+| `check_lottery.py` | 彩票注数公式、号码范围与随机种子可复现性测试 |
 
 ### 运行期目录（不纳入 Git）
 

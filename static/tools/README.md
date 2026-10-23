@@ -12,6 +12,8 @@
 | `english.meta.json` | 编程英语工具的列表元数据 |
 | `keywords.html` | 多语言关键字：本地速查、AI 解释、GitHub API 演示 |
 | `keywords.meta.json` | 多语言关键字工具的列表元数据 |
+| `lottery.html` | 彩票模拟摇号：大乐透/双色球/快乐8、玩法参数、走势统计与模拟结果 |
+| `lottery.meta.json` | 彩票模拟工具的列表元数据 |
 | `_shared/base.css` | 各工具共用的基础样式、变量和卡片布局 |
 | `_shared/finance.js` | 金融计算纯函数：个税、社保、摊还、提前还款、IRR，可在 node 里直接测 |
 | `_shared/loan-ui.js` | 房贷/车贷/提前还款共用的结果卡片和表格渲染 |
