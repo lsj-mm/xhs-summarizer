@@ -301,6 +301,52 @@ async def lottery_simulate(payload: dict) -> dict:
         raise HTTPException(status_code=502, detail=f"模拟摇号暂时不可用：{exc}") from exc
 
 
+@app.get("/api/lottery/saved")
+async def lottery_saved() -> dict:
+    """历史摇号记录。"""
+    return await asyncio.to_thread(
+        lambda: {"ok": True, "records": lottery_mod.load_saved(config_mod.load()).get("records", [])}
+    )
+
+
+@app.post("/api/lottery/saved")
+async def lottery_save(payload: dict) -> dict:
+    """保存一次模拟结果。"""
+    try:
+        record = await asyncio.to_thread(lottery_mod.save_result, payload or {}, config_mod.load())
+        return {"ok": True, "record": record}
+    except lottery_mod.LotteryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("保存彩票记录失败")
+        raise HTTPException(status_code=502, detail=f"保存失败：{exc}") from exc
+
+
+@app.delete("/api/lottery/saved/{record_id}")
+async def lottery_delete(record_id: str) -> dict:
+    """删除一条历史记录。"""
+    ok = await asyncio.to_thread(lottery_mod.delete_saved, record_id, config_mod.load())
+    if not ok:
+        raise HTTPException(status_code=404, detail="找不到这条记录")
+    return {"ok": True}
+
+
+@app.post("/api/lottery/saved/{record_id}/check")
+async def lottery_check(record_id: str, payload: dict | None = None) -> dict:
+    """用下一期开奖核对是否中奖。"""
+    issue = str((payload or {}).get("issue") or "")
+    try:
+        record = await asyncio.to_thread(
+            lottery_mod.check_saved, record_id, config_mod.load(), issue
+        )
+        return {"ok": True, "record": record, "check": record.get("check")}
+    except lottery_mod.LotteryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("核对彩票记录失败")
+        raise HTTPException(status_code=502, detail=f"核对失败：{exc}") from exc
+
+
 # ------------------------------------------------------------------ 作业
 
 @app.post("/api/jobs")

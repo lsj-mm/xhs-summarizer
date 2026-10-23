@@ -103,6 +103,74 @@ def main() -> int:
     except lottery.LotteryError:
         check(True, "胆码+拖码不足时明确报错")
 
+    # 2026 新规则：大乐透 7 个奖级
+    level_cases = [
+        ((5, 2), 1), ((5, 1), 2), ((5, 0), 3), ((4, 2), 3),
+        ((4, 1), 4), ((4, 0), 5), ((3, 2), 5), ((3, 1), 6),
+        ((2, 2), 6), ((3, 0), 7), ((2, 1), 7), ((1, 2), 7), ((0, 2), 7),
+    ]
+    check(all(lottery._dlt_level(a, b) == expected for (a, b), expected in level_cases),
+          "大乐透 7 个奖级条件正确")
+
+    dlt_draw = {
+        "issue": "1", "date": "2026-01-01", "main": [1, 2, 3, 4, 5], "extra": [1, 2],
+        "prizes": {"一等奖": 10000000, "二等奖": 300000, "三等奖": 6666,
+                   "四等奖": 380, "五等奖": 200, "六等奖": 18, "七等奖": 7},
+    }
+    dlt_record = {
+        "game": "dlt", "play": "single", "bet_count": 1, "append": False,
+        "tickets": [{"main": [1, 2, 3, 4, 5], "extra": [1, 2]}],
+    }
+    jackpot = lottery.score_record(dlt_record, dlt_draw)
+    check(jackpot["winning"] and jackpot["amount"] == 10000000,
+          "大乐透一等奖金额来自当期公告", str(jackpot["amount"]))
+    append_record = {**dlt_record, "append": True}
+    check(lottery.score_record(append_record, dlt_draw)["amount"] == 18000000,
+          "大乐透追加一等奖按 1.8 倍计算")
+    third_record = {**dlt_record, "tickets": [{"main": [1, 2, 3, 4, 8], "extra": [1, 2]}]}
+    check(lottery.score_record(third_record, dlt_draw)["amount"] == 6666,
+          "大乐透三等奖 5+0 能核对")
+    check(lottery.score_record({**third_record, "append": True}, dlt_draw)["amount"] == 6666,
+          "新规则追加只参与浮动奖，三等奖不追加")
+
+    ssq_draw = {
+        "issue": "1", "date": "2026-01-01", "main": [1, 2, 3, 4, 5, 6], "extra": [1],
+        "prizes": {"1": 8000000, "2": 300000, "3": 3000, "4": 200, "5": 10, "6": 5},
+    }
+    ssq_record = {
+        "game": "ssq", "play": "single", "bet_count": 1, "append": False,
+        "tickets": [{"main": [1, 2, 3, 4, 5, 6], "extra": [1]}],
+    }
+    check(lottery.score_record(ssq_record, ssq_draw)["amount"] == 8000000,
+          "双色球一等奖核对")
+    ssq_second = {**ssq_record, "tickets": [{"main": [1, 2, 3, 4, 5, 6], "extra": [2]}]}
+    check(lottery.score_record(ssq_second, ssq_draw)["amount"] == 300000,
+          "双色球二等奖核对")
+
+    kl8_draw = {"issue": "1", "date": "2026-01-01", "main": list(range(1, 21)),
+                "extra": [], "prizes": {"x10z10": 5000000}}
+    kl8_record = {
+        "game": "kl8", "play": "single", "bet_count": 1, "append": False,
+        "tickets": [{"main": list(range(1, 11)), "extra": []}],
+    }
+    check(lottery.score_record(kl8_record, kl8_draw)["amount"] == 5000000,
+          "快乐8选十中十核对")
+
+    dlt_compound = {
+        "game": "dlt", "play": "compound", "bet_count": 6, "append": False,
+        "tickets": [],
+        "selection": {"main": [1, 2, 3, 4, 5, 6], "extra": [1, 2]},
+    }
+    check(len(list(lottery._expanded_tickets(dlt_compound))) == 6,
+          "大乐透前区复式 6+2 展开为 6 注")
+    dlt_dantuo = {
+        "game": "dlt", "play": "dantuo", "bet_count": 4, "append": False,
+        "tickets": [],
+        "selection": {"dan": [1, 2], "tuo": [3, 4, 5, 6], "extra": [1, 2]},
+    }
+    check(len(list(lottery._expanded_tickets(dlt_dantuo))) == 4,
+          "大乐透胆拖展开注数正确")
+
     failed = 0
     for ok, label in results:
         print(("  ✓ " if ok else "  ✗ ") + label)

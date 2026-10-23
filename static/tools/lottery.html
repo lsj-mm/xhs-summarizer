@@ -92,6 +92,30 @@
   .err{background:#fff7f6; border:1px solid #f3c9c4; color:#a4261b; border-radius:9px; padding:10px 12px;
     font-size:12.5px; white-space:pre-wrap; line-height:1.7}
   .notes{margin:12px 0 0; padding-left:18px; color:var(--muted); font-size:11.5px; line-height:1.8}
+  .result-head{display:flex; align-items:flex-start; gap:12px; justify-content:space-between; margin-bottom:12px}
+  .result-head h2{margin:0}
+  .ghost{
+    font-family:inherit; font-size:12px; font-weight:600; padding:6px 10px; border-radius:7px;
+    border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer; white-space:nowrap;
+  }
+  .ghost:hover{background:#f7f8fa}
+  .ghost:disabled{opacity:.55; cursor:not-allowed}
+  .ghost.danger{color:#b42318; border-color:#f3c9c4}
+  .hist-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px}
+  .hist-head h2{margin:0}
+  .saved{border:1px solid var(--line); border-radius:10px; padding:12px 13px; margin-bottom:10px; background:#fcfcfd}
+  .saved-head{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12.5px; margin-bottom:7px}
+  .saved-head b{font-size:13px}
+  .saved-nums{font-size:12.5px; line-height:1.9}
+  .saved-num{margin:2px 0}
+  .saved-num .lab{color:var(--muted); display:inline-block; min-width:44px}
+  .saved-meta{color:var(--muted); font-size:11.5px; line-height:1.7; margin-top:5px}
+  .saved-check{margin-top:7px; padding:7px 9px; border-radius:7px; background:#f4f6f9; font-size:12px; line-height:1.7}
+  .saved-check.win{background:#e9f8ef; color:#116b3a}
+  .saved-check.lose{background:#f7f8fa; color:var(--muted)}
+  .saved-check b{font-size:12.5px}
+  .saved-actions{display:flex; gap:7px; margin-top:8px; flex-wrap:wrap}
+  .saved-empty{color:var(--muted); font-size:12.5px; padding:18px 4px; text-align:center}
   .disclaimer{margin-top:16px; text-align:center; color:#8a90a0; font-size:11.5px; line-height:1.7}
   .hidden{display:none !important}
   @media (max-width:860px){
@@ -181,6 +205,17 @@
           <div>选好彩种和玩法，点「生成模拟号码」。</div>
           <div style="margin-top:6px">会先读取官方历史开奖，再按策略生成号码。</div>
         </div>
+      </section>
+
+      <section class="card" id="historyCard" style="margin-top:16px">
+        <div class="hist-head">
+          <h2 style="margin:0">历史摇号</h2>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="pill" id="savedCount">0 条</span>
+            <button class="ghost" id="refreshSaved" type="button">刷新</button>
+          </div>
+        </div>
+        <div id="savedList"><div class="saved-empty">还没有保存的摇号记录。</div></div>
       </section>
 
       <p class="disclaimer">模拟结果仅供娱乐参考，不构成任何购彩建议。请理性购彩，量力而行。</p>
@@ -472,13 +507,166 @@ function renderResult(data) {
   }
 
   const notes = (data.notes || []).map((note) => '<li>' + esc(note) + '</li>').join('');
-  $('resultCard').innerHTML = '<h2>' + esc(data.game_name) + ' · ' + esc(data.play_name)
+  $('resultCard').innerHTML = '<div class="result-head"><h2>' + esc(data.game_name) + ' · ' + esc(data.play_name)
     + ' · ' + esc(data.strategy_name) + '</h2>'
+    + '<button class="ghost" id="saveBtn" type="button">保存这组号码</button></div>'
     + summary + body
     + '<p class="hint" style="margin:10px 0 0">'
     + (data.append ? '已按追加投注计算金额。' : '未追加投注。')
     + ' 复式/胆拖显示的是选号集合，注数按组合公式计算。</p>'
     + '<ul class="notes">' + notes + '</ul>';
+}
+
+function ballsSmall(nums, color) {
+  return (nums || []).map((n) => ball(n, color, true)).join('');
+}
+
+function formatSavedNumbers(record) {
+  const spec = state.games[record.game] || {};
+  const play = record.play;
+  if (play === 'single' || play === 'multiple' || play === 'package') {
+    const tickets = record.tickets || [];
+    const shown = tickets.slice(0, 5).map((ticket, index) =>
+      '<div class="saved-num">' + (index + 1) + '. ' + ballsSmall(ticket.main, 'red')
+      + ballsSmall(ticket.extra, 'blue') + '</div>'
+    ).join('');
+    const more = tickets.length > 5 ? '<div class="saved-num">…共 ' + tickets.length + ' 注</div>' : '';
+    return shown + more;
+  }
+  const selection = record.selection || {};
+  let html = '';
+  if (play === 'dantuo') {
+    html += '<div class="saved-num"><span class="lab">胆码</span>' + ballsSmall(selection.dan, 'gold') + '</div>';
+    html += '<div class="saved-num"><span class="lab">拖码</span>' + ballsSmall(selection.tuo, 'red') + '</div>';
+  } else {
+    html += '<div class="saved-num"><span class="lab">' + esc(spec.main_label || '号码') + '</span>'
+      + ballsSmall(selection.main, 'red') + '</div>';
+  }
+  if (selection.extra && selection.extra.length) {
+    html += '<div class="saved-num"><span class="lab">' + esc(spec.extra_label || '后区') + '</span>'
+      + ballsSmall(selection.extra, 'blue') + '</div>';
+  }
+  return html;
+}
+
+function renderSaved(records) {
+  $('savedCount').textContent = records.length + ' 条';
+  if (!records.length) {
+    $('savedList').innerHTML = '<div class="saved-empty">还没有保存的摇号记录。</div>';
+    return;
+  }
+  $('savedList').innerHTML = records.map((record) => {
+    const check = record.check;
+    let checkHtml = '';
+    if (check) {
+      const levels = (check.levels || []).map((level) =>
+        level.name + ' ' + level.count + ' 注 ' + level.amount + ' 元'
+      ).join('；');
+      checkHtml = '<div class="saved-check ' + (check.winning ? 'win' : 'lose') + '">'
+        + '<b>' + (check.winning ? '中奖 ' + check.amount + ' 元' : '未中奖') + '</b>'
+        + '　第 ' + esc(check.issue) + ' 期 · ' + esc(check.date) + ' 开奖'
+        + (levels ? '<div>' + esc(levels) + '</div>' : '')
+        + (check.winning_tickets ? '<div>中奖注数 ' + check.winning_tickets + ' / ' + check.total_tickets + '</div>' : '')
+        + '</div>';
+    } else {
+      checkHtml = '<div class="saved-check">参考第 ' + esc(record.reference_issue || '—')
+        + ' 期；开奖后点「核对开奖」。</div>';
+    }
+    return '<div class="saved" data-id="' + esc(record.id) + '">'
+      + '<div class="saved-head"><b>' + esc(record.game_name) + ' · ' + esc(record.play_name) + '</b>'
+      + '<span class="pill">' + esc(formatTime(record.created_at)) + '</span>'
+      + (record.append ? '<span class="pill warn">追加</span>' : '')
+      + '</div>'
+      + '<div class="saved-nums">' + formatSavedNumbers(record) + '</div>'
+      + '<div class="saved-meta">' + record.bet_count + ' 注 · ' + record.amount + ' 元'
+      + ' · 参考 ' + esc(record.reference_issue || '—') + ' 期'
+      + ' · 种子 ' + esc(record.seed || '—') + '</div>'
+      + checkHtml
+      + '<div class="saved-actions">'
+      + '<button class="ghost" data-check="' + esc(record.id) + '" type="button">核对开奖</button>'
+      + '<button class="ghost danger" data-del="' + esc(record.id) + '" type="button">删除</button>'
+      + '</div></div>';
+  }).join('');
+}
+
+async function loadSaved() {
+  try {
+    const response = await fetch('/api/lottery/saved');
+    const data = await response.json();
+    if (!response.ok) throw new Error((data && data.detail) || ('HTTP ' + response.status));
+    renderSaved(data.records || []);
+  } catch (err) {
+    $('savedList').innerHTML = '<div class="err">历史记录加载失败：' + esc(err.message) + '</div>';
+  }
+}
+
+async function saveCurrent() {
+  const result = state.result;
+  if (!result) return;
+  const button = $('saveBtn');
+  if (button) { button.disabled = true; button.textContent = '保存中…'; }
+  const payload = {
+    game: result.game,
+    play: result.play,
+    params: result.params,
+    strategy: result.strategy,
+    seed: result.seed,
+    append: result.append,
+    bet_count: result.bet_count,
+    unit_price: result.unit_price,
+    amount: result.amount,
+    tickets: result.tickets,
+    selection: result.selection,
+    data: { latest_issue: result.data.latest_issue, latest_date: result.data.latest_date }
+  };
+  try {
+    const response = await fetch('/api/lottery/saved', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error((data && data.detail) || ('HTTP ' + response.status));
+    if (button) { button.textContent = '已保存 ✓'; }
+    setMessage('<div class="saved-check win">已保存到历史摇号，可在下方核对开奖。</div>');
+    await loadSaved();
+  } catch (err) {
+    if (button) { button.disabled = false; button.textContent = '保存这组号码'; }
+    setMessage('<div class="err">保存失败：' + esc(err.message) + '</div>');
+  }
+}
+
+async function checkSaved(recordId, button) {
+  if (button) { button.disabled = true; button.textContent = '核对中…'; }
+  try {
+    const response = await fetch('/api/lottery/saved/' + encodeURIComponent(recordId) + '/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error((data && data.detail) || ('HTTP ' + response.status));
+    const check = data.check || {};
+    setMessage('<div class="saved-check ' + (check.winning ? 'win' : 'lose') + '">第 '
+      + esc(check.issue) + ' 期核对完成：'
+      + (check.winning ? '中奖 ' + check.amount + ' 元' : '未中奖') + '</div>');
+    await loadSaved();
+  } catch (err) {
+    if (button) { button.disabled = false; button.textContent = '核对开奖'; }
+    setMessage('<div class="err">' + esc(err.message) + '</div>');
+  }
+}
+
+async function deleteSaved(recordId) {
+  if (!window.confirm('确定删除这条历史摇号记录？')) return;
+  try {
+    const response = await fetch('/api/lottery/saved/' + encodeURIComponent(recordId), { method: 'DELETE' });
+    const data = await response.json();
+    if (!response.ok) throw new Error((data && data.detail) || ('HTTP ' + response.status));
+    await loadSaved();
+  } catch (err) {
+    setMessage('<div class="err">删除失败：' + esc(err.message) + '</div>');
+  }
 }
 
 async function generate() {
@@ -547,6 +735,22 @@ $('playSelect').addEventListener('change', () => {
 
 $('generateBtn').addEventListener('click', generate);
 
+$('resultCard').addEventListener('click', (event) => {
+  if (event.target && event.target.id === 'saveBtn') saveCurrent();
+});
+
+$('savedList').addEventListener('click', (event) => {
+  const checkBtn = event.target.closest('button[data-check]');
+  if (checkBtn) {
+    checkSaved(checkBtn.getAttribute('data-check'), checkBtn);
+    return;
+  }
+  const delBtn = event.target.closest('button[data-del]');
+  if (delBtn) deleteSaved(delBtn.getAttribute('data-del'));
+});
+
+$('refreshSaved').addEventListener('click', loadSaved);
+
 async function boot() {
   try {
     const response = await fetch('/api/lottery/games');
@@ -556,6 +760,7 @@ async function boot() {
     state.game = 'dlt';
     state.play = 'single';
     renderAll();
+    await loadSaved();
   } catch (err) {
     setMessage('<div class="err">' + esc(err && err.message ? err.message : String(err)) + '</div>');
     $('generateBtn').disabled = true;

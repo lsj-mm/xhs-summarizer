@@ -768,6 +768,13 @@ def main() -> int:
           "彩票注数/范围/可复现性有离线测试")
     check((app_mod.TOOLS_DIR / "lottery.meta.json").is_file(),
           "彩票工具有 meta.json")
+    check("保存这组号码" in lottery_html and "/api/lottery/saved" in lottery_html
+          and "核对开奖" in lottery_html,
+          "彩票页支持保存、历史记录与开奖核对")
+    lottery_py = (PROJECT_ROOT / "xhs" / "lottery.py").read_text(encoding="utf-8")
+    check("def save_result" in lottery_py and "def check_saved" in lottery_py
+          and "def score_record" in lottery_py,
+          "彩票保存/核对/奖金计算逻辑存在")
 
     file_server.shutdown()
     stub_server.shutdown()
