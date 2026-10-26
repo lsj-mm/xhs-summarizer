@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>学习路径与考核</title>
+<link rel="stylesheet" href="/static/tools/_shared/base.css" />
+<style>
+  .wrap{max-width:1120px;margin:0 auto;padding:24px 20px 56px}
+  header.top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  header.top .logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#2563eb,#7c3aed);
+    display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 auto}
+  header.top h1{font-size:18px;margin:0;font-weight:650}
+  header.top .sub{color:var(--muted);font-size:12.5px}
+  .grow{flex:1}
+  .layout{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:start}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+  .field input,.field select,.field textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);
+    border-radius:8px;font-family:inherit;font-size:13px;background:#fff;color:var(--ink)}
+  .field textarea{min-height:74px;resize:vertical;line-height:1.6}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid rgba(37,99,235,.18);border-color:var(--accent)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  button.primary{width:100%;font-family:inherit;font-size:13.5px;font-weight:600;padding:11px 16px;border-radius:9px;
+    border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+  button.primary:hover{background:var(--accent-dark)}
+  button.primary:disabled{opacity:.55;cursor:not-allowed}
+  button.ghost{font-family:inherit;font-size:12px;font-weight:600;padding:6px 10px;border-radius:7px;
+    border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
+  button.ghost:hover{background:#f7f8fa}
+  button.ghost.danger{color:#b42318;border-color:#f3c9c4}
+  button.ghost:disabled{opacity:.55;cursor:not-allowed}
+  .hint{color:var(--muted);font-size:11.5px;line-height:1.65}
+  .warn{background:#fffaf0;border:1px solid #f0dcb4;color:#7a5500;border-radius:10px;padding:10px 13px;
+    font-size:12.5px;line-height:1.7;margin-bottom:14px}
+  .plan-head{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+  .plan-head h2{font-size:18px;margin:0 0 4px}
+  .plan-goal{color:var(--muted);font-size:13px;line-height:1.7}
+  .meta{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 14px}
+  .pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11px;
+    background:#f1f2f5;color:var(--muted)}
+  .pill.ok{background:#e7f7ee;color:#0f7b3d}
+  .pill.warn{background:#fff5e5;color:#8a6100}
+  .pill.err{background:#fdecea;color:#b42318}
+  .stage{border:1px solid var(--line);border-radius:12px;margin-bottom:12px;background:#fff;overflow:hidden}
+  .stage-head{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid var(--line);background:#fcfcfd}
+  .stage-head .num{width:26px;height:26px;border-radius:50%;background:#eef2ff;color:#3730a3;display:flex;
+    align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:0 0 auto}
+  .stage-head b{font-size:14px}
+  .stage-head .weeks{font-size:11.5px;color:var(--muted)}
+  .stage-body{padding:12px 14px;display:grid;grid-template-columns:1.25fr .9fr;gap:14px}
+  .stage-body h4{margin:0 0 5px;font-size:11.5px;color:var(--muted);font-weight:650}
+  .stage-body ul{margin:0;padding-left:17px;font-size:12.5px;line-height:1.85}
+  .resource{display:block;font-size:12.5px;line-height:1.8;color:var(--accent-dark);text-decoration:none}
+  .resource:hover{text-decoration:underline}
+  .resource small{color:var(--muted)}
+  .assessment{font-size:12px;line-height:1.8;color:var(--muted);border-top:1px dashed var(--line);margin-top:10px;padding-top:8px}
+  .stage-actions{display:flex;gap:7px;flex-wrap:wrap;padding:0 14px 12px}
+  .stage.locked{opacity:.72}
+  .stage.passed{border-color:#b7e4c8}
+  .stage.failed{border-color:#f3c9c4}
+  .empty{text-align:center;color:var(--muted);padding:42px 16px;font-size:13px}
+  .empty .big{font-size:38px;margin-bottom:8px}
+  .loading{color:var(--muted);font-size:13px;padding:10px 0}
+  .err{background:#fff7f6;border:1px solid #f3c9c4;color:#a4261b;border-radius:9px;padding:10px 12px;
+    font-size:12.5px;white-space:pre-wrap;line-height:1.7}
+  .saved-list{display:flex;flex-direction:column;gap:7px;margin-top:8px}
+  .saved-item{border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;background:#fcfcfd}
+  .saved-item:hover{background:#f7f8fa}
+  .saved-item.on{border-color:var(--accent);background:#f5f8ff}
+  .saved-item b{display:block;font-size:12.5px;margin-bottom:2px}
+  .saved-item span{font-size:11px;color:var(--muted)}
+  .modal{position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:50;display:flex;align-items:flex-start;
+    justify-content:center;padding:28px 16px;overflow:auto}
+  .modal.hidden{display:none}
+  .dialog{width:min(820px,100%);background:#fff;border-radius:14px;padding:20px 22px;box-shadow:0 18px 50px rgba(16,24,40,.22)}
+  .dialog h2{font-size:17px;margin:0 0 4px}
+  .dialog .sub{color:var(--muted);font-size:12px;margin-bottom:12px}
+  .q{border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-bottom:9px}
+  .q p{margin:0 0 7px;font-size:13px;font-weight:600;line-height:1.6}
+  .q label{display:flex;gap:7px;font-size:12.5px;line-height:1.8;cursor:pointer;padding:2px 0}
+  .q label input{width:auto}
+  .q.correct{border-color:#b7e4c8;background:#f5fcf7}
+  .q.wrong{border-color:#f3c9c4;background:#fff8f7}
+  .q .explain{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.7}
+  .result{border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin:10px 0;font-size:13px;line-height:1.8}
+  .result.pass{background:#e9f8ef;border-color:#b7e4c8;color:#116b3a}
+  .result.fail{background:#fff7f6;border-color:#f3c9c4;color:#a4261b}
+  .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+  .rules{font-size:11.5px;color:var(--muted);line-height:1.7;margin-top:12px}
+  @media (max-width:900px){
+    .layout{grid-template-columns:1fr}
+    .stage-body{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">🎓</div>
+    <div>
+      <h1>学习路径与考核</h1>
+      <div class="sub">按目标拆解阶段 · 真实资源入口 · 每阶段 3 次严格考核</div>
+    </div>
+    <div class="grow"></div>
+    <span class="pill">80 分通过</span>
+  </header>
+
+  <div class="warn">
+    <b>考核规则：</b>每个阶段最多考 <b>3 次</b>，<b>80 分</b>通过；3 次未通过该阶段作废，
+    必须点「重新学习」清零次数后才能再考。前一阶段通过后，下一阶段才会解锁。
+    学习计划和资源为规划建议，资源以官方/出版社实际页面为准。
+  </div>
+
+  <div class="layout">
+    <aside>
+      <div class="card">
+        <h2>新建学习计划</h2>
+        <div class="field">
+          <label for="topic">学习主题</label>
+          <input id="topic" placeholder="例如：Python 数据分析" />
+        </div>
+        <div class="field">
+          <label for="goal">目标水平</label>
+          <textarea id="goal" placeholder="例如：能独立完成数据清洗、分析和可视化报告"></textarea>
+        </div>
+        <div class="field">
+          <label for="level">当前基础</label>
+          <input id="level" value="零基础" />
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="hours">每周小时</label>
+            <input id="hours" type="number" min="1" max="40" step="1" value="6" />
+          </div>
+          <div class="field">
+            <label for="weeks">计划周期</label>
+            <select id="weeks">
+              <option value="4">4 周</option>
+              <option value="8">8 周</option>
+              <option value="12" selected>12 周</option>
+              <option value="16">16 周</option>
+              <option value="24">24 周</option>
+              <option value="36">36 周</option>
+              <option value="52">52 周</option>
+            </select>
+          </div>
+        </div>
+        <button class="primary" id="createBtn">生成学习路径</button>
+        <p class="hint" style="margin:8px 0 0">AI 会根据目标拆成 2~8 个阶段，并给每阶段配置资源和考核重点。</p>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h2>我的学习计划</h2>
+        <div id="planList"><div class="hint">还没有计划。</div></div>
+        <button class="ghost danger" id="deletePlan" style="margin-top:10px;display:none">删除当前计划</button>
+      </div>
+    </aside>
+
+    <main>
+      <div id="message"></div>
+      <section class="card" id="emptyCard">
+        <div class="empty">
+          <div class="big">🎓</div>
+          <div>填左侧主题和目标，生成你的第一阶段。</div>
+          <div style="margin-top:6px">每阶段考核 3 次，80 分通过。</div>
+        </div>
+      </section>
+      <section id="planView" class="hidden"></section>
+    </main>
+  </div>
+</div>
+
+<div class="modal hidden" id="examModal">
+  <div class="dialog">
+    <h2 id="examTitle">阶段考核</h2>
+    <div class="sub" id="examSub"></div>
+    <div id="examBody"></div>
+    <div id="examResult"></div>
+    <div class="actions" id="examActions"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const $ = (id) => document.getElementById(id);
+const state = {
+  plan: null,
+  plans: [],
+  exam: null,
+  examStage: -1,
+  loading: false
+};
+
+function esc(text) {
+  return String(text == null ? '' : text).replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
+function setMessage(html) {
+  $('message').innerHTML = html || '';
+}
+
+async function api(url, options) {
+  const response = await fetch(url, options);
+  let data = {};
+  try { data = await response.json(); } catch (e) { /* ignore */ }
+  if (!response.ok) throw new Error((data && data.detail) || ('HTTP ' + response.status));
+  return data;
+}
+
+function statusLabel(status) {
+  return ({ learning: '学习中', locked: '未解锁', passed: '已通过', failed: '已作废' })[status] || status;
+}
+
+function statusClass(status) {
+  return status === 'passed' ? 'ok' : (status === 'failed' ? 'err' : (status === 'locked' ? '' : 'warn'));
+}
+
+function renderPlanList() {
+  $('planList').innerHTML = state.plans.length
+    ? state.plans.map((p) => '<div class="saved-item ' + (state.plan && state.plan.id === p.id ? 'on' : '')
+      + '" data-plan="' + esc(p.id) + '"><b>' + esc(p.title) + '</b>'
+      + '<span>' + esc(p.topic) + ' · 通过 ' + p.passed + '/' + p.stage_count
+      + (p.failed ? ' · 作废 ' + p.failed : '') + '</span></div>').join('')
+    : '<div class="hint">还没有计划。</div>';
+  $('deletePlan').style.display = state.plan ? 'inline-flex' : 'none';
+}
+
+function renderPlan(plan) {
+  state.plan = plan;
+  $('emptyCard').classList.add('hidden');
+  $('planView').classList.remove('hidden');
+  const stages = plan.stages || [];
+  $('planView').innerHTML = '<div class="card">'
+    + '<div class="plan-head"><div><h2>' + esc(plan.plan.title) + '</h2>'
+    + '<div class="plan-goal">' + esc(plan.plan.goal) + '</div></div>'
+    + '<span class="pill">' + stages.filter(s => s.status === 'passed').length + '/' + stages.length + ' 通过</span></div>'
+    + '<div class="meta"><span class="pill">主题：' + esc(plan.topic) + '</span>'
+    + '<span class="pill">基础：' + esc(plan.current_level) + '</span>'
+    + '<span class="pill">每周 ' + esc(plan.weekly_hours) + ' 小时</span>'
+    + '<span class="pill">周期 ' + esc(plan.weeks) + ' 周</span>'
+    + '<span class="pill">3 次机会 · 80 分通过</span></div>'
+    + stages.map(renderStage).join('')
+    + '<p class="rules">阶段考核自动判分；项目任务建议自行保留作品，作为阶段成果。3 次不过必须重新学习，不能跳过。</p>'
+    + '</div>';
+  renderPlanList();
+}
+
+function renderStage(stage) {
+  const locked = stage.status === 'locked';
+  const passed = stage.status === 'passed';
+  const failed = stage.status === 'failed';
+  const resources = (stage.resources || []).map((r) =>
+    '<a class="resource" href="' + esc(r.url) + '" target="_blank" rel="noreferrer">'
+    + '[' + esc(r.type) + '] ' + esc(r.title) + (r.why ? '<small> — ' + esc(r.why) + '</small>' : '') + '</a>'
+  ).join('');
+  let action = '';
+  if (locked) {
+    action = '<button class="ghost" disabled>上一阶段通过后解锁</button>';
+  } else if (passed) {
+    action = '<span class="pill ok">已通过，下一阶段已解锁</span>';
+  } else if (failed) {
+    action = '<span class="pill err">3 次未通过，阶段作废</span>'
+      + '<button class="ghost danger" data-reset="' + stage.index + '">重新学习（清零次数）</button>';
+  } else {
+    action = '<button class="ghost" data-exam="' + stage.index + '">'
+      + (stage.exam ? '继续考试' : '生成阶段考核') + '</button>'
+      + '<span class="pill">已考 ' + stage.attempts + '/3</span>';
+  }
+  return '<div class="stage ' + esc(stage.status) + '">'
+    + '<div class="stage-head"><span class="num">' + (stage.index + 1) + '</span>'
+    + '<b>' + esc(stage.name) + '</b><span class="weeks">' + esc(stage.weeks) + ' 周</span>'
+    + '<span class="pill ' + statusClass(stage.status) + '">' + statusLabel(stage.status) + '</span></div>'
+    + '<div class="stage-body"><div><h4>阶段目标</h4><div class="hint">' + esc(stage.objective) + '</div>'
+    + '<h4 style="margin-top:10px">学习内容</h4><ul>'
+    + (stage.content || []).map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>'
+    + '<div><h4>推荐资源</h4>' + (resources || '<div class="hint">暂无资源</div>')
+    + '<div class="assessment">通过标准：' + esc(stage.assessment.pass_score) + ' 分'
+    + (stage.assessment.focus && stage.assessment.focus.length
+      ? '<br />考核重点：' + esc(stage.assessment.focus.join('、')) : '')
+    + (stage.assessment.project ? '<br />实操作品：' + esc(stage.assessment.project) : '')
+    + '</div></div></div>'
+    + '<div class="stage-actions">' + action + '</div></div>';
+}
+
+async function loadPlans() {
+  try {
+    const data = await api('/api/learning/plans');
+    state.plans = data.plans || [];
+    renderPlanList();
+  } catch (err) {
+    $('planList').innerHTML = '<div class="err">' + esc(err.message) + '</div>';
+  }
+}
+
+async function loadPlan(id) {
+  setMessage('<div class="loading">正在读取学习计划…</div>');
+  try {
+    const data = await api('/api/learning/plans/' + encodeURIComponent(id));
+    setMessage('');
+    renderPlan(data.plan);
+    localStorage.setItem('learning_plan', id);
+  } catch (err) {
+    setMessage('<div class="err">' + esc(err.message) + '</div>');
+  }
+}
+
+async function createPlan() {
+  const topic = $('topic').value.trim();
+  const goal = $('goal').value.trim();
+  if (!topic || !goal) { setMessage('<div class="err">请填写学习主题和目标水平。</div>'); return; }
+  state.loading = true;
+  $('createBtn').disabled = true;
+  $('createBtn').textContent = 'AI 正在拆解路径…';
+  setMessage('<div class="loading">正在生成阶段计划，可能需要十几秒…</div>');
+  try {
+    const data = await api('/api/learning/plans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic,
+        goal,
+        current_level: $('level').value.trim() || '零基础',
+        weekly_hours: Number($('hours').value) || 6,
+        weeks: Number($('weeks').value) || 12
+      })
+    });
+    setMessage('');
+    renderPlan(data.plan);
+    await loadPlans();
+    localStorage.setItem('learning_plan', data.plan.id);
+  } catch (err) {
+    setMessage('<div class="err">' + esc(err.message) + '</div>');
+  } finally {
+    state.loading = false;
+    $('createBtn').disabled = false;
+    $('createBtn').textContent = '生成学习路径';
+  }
+}
+
+function renderExam() {
+  const exam = state.exam;
+  const stage = state.plan.stages[state.examStage];
+  $('examTitle').textContent = '阶段考核：' + stage.name;
+  $('examSub').textContent = '共 ' + exam.questions.length + ' 题，80 分通过；当前第 '
+    + (stage.attempts + 1) + '/3 次机会。';
+  $('examBody').innerHTML = exam.questions.map((q, i) =>
+    '<div class="q" data-q="' + i + '"><p>' + (i + 1) + '. ' + esc(q.question) + '</p>'
+    + q.options.map((opt, j) =>
+      '<label><input type="radio" name="q' + i + '" value="' + j + '" />' + esc(opt) + '</label>'
+    ).join('') + '</div>'
+  ).join('');
+  $('examResult').innerHTML = '';
+  $('examActions').innerHTML = '<button class="ghost" id="closeExam">关闭</button>'
+    + '<button class="primary" id="submitExam" style="width:auto">提交试卷</button>';
+  $('examModal').classList.remove('hidden');
+  $('closeExam').addEventListener('click', closeExam);
+  $('submitExam').addEventListener('click', submitExam);
+}
+
+async function openExam(stageIndex) {
+  try {
+    const data = await api('/api/learning/plans/' + encodeURIComponent(state.plan.id)
+      + '/stages/' + stageIndex + '/exam', { method: 'POST' });
+    state.exam = { questions: data.questions };
+    state.examStage = stageIndex;
+    renderExam();
+  } catch (err) {
+    setMessage('<div class="err">' + esc(err.message) + '</div>');
+  }
+}
+
+function closeExam() {
+  $('examModal').classList.add('hidden');
+  state.exam = null;
+  state.examStage = -1;
+}
+
+async function submitExam() {
+  const stage = state.plan.stages[state.examStage];
+  const answers = [];
+  for (let i = 0; i < state.exam.questions.length; i += 1) {
+    const checked = document.querySelector('input[name="q' + i + '"]:checked');
+    if (!checked) { setMessage('<div class="err">还有题目没有作答。</div>'); return; }
+    answers.push(Number(checked.value));
+  }
+  $('submitExam').disabled = true;
+  $('submitExam').textContent = '判分中…';
+  try {
+    const data = await api('/api/learning/plans/' + encodeURIComponent(state.plan.id)
+      + '/stages/' + state.examStage + '/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers })
+    });
+    state.plan = data.plan;
+    renderPlan(state.plan);
+    renderExamResult(data);
+  } catch (err) {
+    $('examResult').innerHTML = '<div class="err">' + esc(err.message) + '</div>';
+    $('submitExam').disabled = false;
+    $('submitExam').textContent = '提交试卷';
+  }
+}
+
+function renderExamResult(data) {
+  $('examBody').querySelectorAll('.q').forEach((node, i) => {
+    const detail = data.details[i];
+    if (!detail) return;
+    node.classList.add(detail.correct ? 'correct' : 'wrong');
+    const explain = document.createElement('div');
+    explain.className = 'explain';
+    explain.textContent = (detail.correct ? '回答正确。' : '正确答案：'
+      + detail.options[detail.answer] + '。') + (detail.explanation || '');
+    node.appendChild(explain);
+  });
+  const pass = data.passed;
+  $('examResult').innerHTML = '<div class="result ' + (pass ? 'pass' : 'fail') + '">'
+    + '<b>' + (pass ? '通过' : '未通过') + '</b>　得分 ' + data.score + ' / 100'
+    + '　答对 ' + data.correct + ' / ' + data.total
+    + '<br />已用 ' + data.attempts + '/3 次机会'
+    + (pass ? '，下一阶段已解锁。' : (data.status === 'failed'
+      ? '，本阶段 3 次机会已用完，阶段作废。请关闭后点「重新学习」。'
+      : '，还剩 ' + data.remaining + ' 次机会。建议复习后重新生成试卷再考。'))
+    + '</div>';
+  const actions = $('examActions');
+  actions.innerHTML = '<button class="ghost" id="closeExam">关闭</button>';
+  if (!pass && data.status !== 'failed') {
+    actions.innerHTML += '<button class="primary" id="retryExam" style="width:auto">再考一次</button>';
+    $('retryExam').addEventListener('click', async () => {
+      const stageIndex = state.examStage;
+      closeExam();
+      await openExam(stageIndex);
+    });
+  }
+  $('closeExam').addEventListener('click', closeExam);
+}
+
+async function resetStage(stageIndex) {
+  if (!window.confirm('重新学习会清零本阶段的 3 次机会和当前试卷，确定继续？')) return;
+  try {
+    const data = await api('/api/learning/plans/' + encodeURIComponent(state.plan.id)
+      + '/stages/' + stageIndex + '/reset', { method: 'POST' });
+    renderPlan(data.plan);
+    await loadPlans();
+  } catch (err) {
+    setMessage('<div class="err">' + esc(err.message) + '</div>');
+  }
+}
+
+async function deletePlan() {
+  if (!state.plan || !window.confirm('确定删除这份学习计划？进度不可恢复。')) return;
+  try {
+    await api('/api/learning/plans/' + encodeURIComponent(state.plan.id), { method: 'DELETE' });
+    state.plan = null;
+    localStorage.removeItem('learning_plan');
+    $('planView').classList.add('hidden');
+    $('emptyCard').classList.remove('hidden');
+    await loadPlans();
+  } catch (err) {
+    setMessage('<div class="err">' + esc(err.message) + '</div>');
+  }
+}
+
+$('createBtn').addEventListener('click', createPlan);
+$('deletePlan').addEventListener('click', deletePlan);
+$('planList').addEventListener('click', (event) => {
+  const item = event.target.closest('[data-plan]');
+  if (item) loadPlan(item.getAttribute('data-plan'));
+});
+$('planView').addEventListener('click', (event) => {
+  const exam = event.target.closest('[data-exam]');
+  if (exam) { openExam(Number(exam.getAttribute('data-exam'))); return; }
+  const reset = event.target.closest('[data-reset]');
+  if (reset) resetStage(Number(reset.getAttribute('data-reset')));
+});
+$('examModal').addEventListener('click', (event) => {
+  if (event.target === $('examModal')) closeExam();
+});
+
+async function boot() {
+  await loadPlans();
+  const saved = localStorage.getItem('learning_plan');
+  if (saved && state.plans.some((p) => p.id === saved)) {
+    await loadPlan(saved);
+  }
+}
+
+boot();
+</script>
+</body>
+</html>

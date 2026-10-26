@@ -10,11 +10,12 @@
 | 📚 编程英语 | 编程词汇查询 + 技术例句 + 日常口语练习；复用已配置的 DeepSeek，中文讲解 |
 | 🔎 多语言关键字 | Python / C++ / Java / 前端 / MySQL / Go 关键字速查，含 AI 补充解释与真实 GitHub API 示例 |
 | 🎲 彩票模拟摇号 | 大乐透 / 双色球 / 快乐8：官方历史数据、走势统计、单式/复式/胆拖模拟；内置竞彩足球参考，仅供娱乐 |
+| 🎓 学习路径与考核 | 按主题和目标生成阶段路径、资源入口和阶段考核，严格执行 3 次机会、80 分通过、不过重学 |
 
 「税率计算」的五个标签页也可以用地址直接打开，例如 `#/salary`、`#/mortgage`、`#/prepay`、`#/carloan`、`#/vat`。
 
 再加新工具**不用改任何代码**，详见「怎么再加一个工具」一节。
-下面先讲税率计算，再讲编程英语、多语言关键字、彩票模拟和小红书视频转笔记。
+下面先讲税率计算，再讲编程英语、多语言关键字、彩票模拟、竞彩足球和学习路径。
 
 ---
 
@@ -240,6 +241,25 @@ $env:XUNFEI_API_SECRET="你的 APISecret"
 
 ---
 
+## 学习路径与考核
+
+按主题、当前基础和目标水平，生成 2~8 个递进阶段，并为每阶段配置学习内容、资源入口、考核重点和实操作品。
+
+- **计划生成**：复用已配置的 DeepSeek；从当前基础逆向拆解到目标，阶段目标要求可衡量。
+- **资源**：AI 只给资源名称和搜索词，程序生成 Bing / 豆瓣 / GitHub / B 站的搜索入口，
+  不编造具体课程、书号或链接；资源是否适合仍需自己判断。
+- **考核**：每阶段 AI 生成 10 道单选题，程序自动判分，**80 分通过**；
+  **每阶段 3 次机会，3 次未通过该阶段作废**，必须点「重新学习」清零次数后才能再考。
+- **解锁**：前一阶段通过后，下一阶段才会解锁；已通过阶段不可重考。
+- **持久化**：计划、阶段状态、每次得分和作废记录保存在 `work/learning/plans.json`。
+- **说明**：选择题只能检验部分理解；每阶段的实操作品建议自己保留，作为真正的能力证据。
+
+接口：`POST/GET /api/learning/plans`、`GET/DELETE /api/learning/plans/{id}`、
+`POST /api/learning/plans/{id}/stages/{index}/exam|submit|reset`；
+离线测试 `python tools/check_learning.py`。
+
+---
+
 ## 小红书视频转笔记
 
 粘贴一条小红书分享链接，工具会自动下载视频、把语音转成文字，然后**按内容类型**整理成 markdown：
@@ -423,7 +443,7 @@ python tools/selfcheck.py
 node tools/check_finance.js
 ```
 
-**验证状态**：离线自检 123 项、HTTP 接口层 12 项均通过。另外用一条真实公开笔记跑了完整链路
+**验证状态**：离线自检 128 项、HTTP 接口层 12 项均通过。另外用一条真实公开笔记跑了完整链路
 （短链跟跳转 → 下载 9.0 MB / 时长 02:34 → 标题、作者、正文、发布日期全部取对 → 提取出 4 个工具
 → 用**真实 GitHub 接口**核实链接 → 生成 md：REA、Ghidra 都正确匹配到仓库，另外两个老实写「未找到」）。
 转写与总结两步用的是本地假服务替身，未消耗任何额度；真实付费接口的表现取决于你的 key 与账户状态。
@@ -525,6 +545,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `keywords.py` | 多语言关键字：AI 解释 + GitHub API 搜索示例 |
 | `lottery.py` | 彩票模拟：官方历史数据、走势统计、注数公式、模拟选号 |
 | `football.py` | 竞彩足球参考：500.com 赛程/赔率、比分/半全场/总进球 |
+| `learning.py` | 学习路径：AI 规划、阶段状态、判分、3 次机会与重学 |
 | `jobs.py` | 作业状态与事件总线（SSE 历史/增量） |
 | `pipeline.py` | 把解析、下载、转写、总结、落盘串成流水线 |
 | `sandbox.py` | 临时目录权限兼容补丁 |
@@ -544,6 +565,8 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `tools/keywords.meta.json` | 多语言关键字工具的列表元数据 |
 | `tools/lottery.html` | 彩票模拟摇号：大乐透/双色球/快乐8、玩法参数、走势与结果 |
 | `tools/lottery.meta.json` | 彩票模拟工具的列表元数据 |
+| `tools/learning.html` | 学习路径与考核：阶段计划、资源入口、答题和重学 |
+| `tools/learning.meta.json` | 学习路径工具的列表元数据 |
 | `tools/_shared/base.css` | 各工具共用的基础样式 |
 | `tools/_shared/finance.js` | 金融计算纯函数：个税、社保、摊还、提前还款、IRR |
 | `tools/_shared/loan-ui.js` | 房贷/车贷/提前还款共用的结果渲染 |
@@ -563,6 +586,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `check_xunfei.py` | 讯飞语音评测离线测试（假响应） |
 | `check_lottery.py` | 彩票注数公式、号码范围与随机种子可复现性测试 |
 | `check_football.py` | 500.com 行解析、赔率概率、推荐结构与缺失数据处理测试 |
+| `check_learning.py` | 学习计划校验、判分、三次机会状态与答案不泄露测试 |
 
 ### 运行期目录（不纳入 Git）
 

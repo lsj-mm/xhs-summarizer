@@ -28,6 +28,7 @@ from xhs import english as english_mod
 from xhs import football as football_mod
 from xhs import jobs as jobs_mod
 from xhs import keywords as keywords_mod
+from xhs import learning as learning_mod
 from xhs import lottery as lottery_mod
 from xhs import pipeline as pipeline_mod
 from xhs import pronounce as pronounce_mod
@@ -359,6 +360,90 @@ async def football_daily(day: str = "") -> dict:
     except Exception as exc:
         LOG.exception("足球赛程分析失败")
         raise HTTPException(status_code=502, detail=f"足球数据暂时不可用：{exc}") from exc
+
+
+# ------------------------------------------------------------------ 学习路径
+
+@app.get("/api/learning/plans")
+async def learning_plans() -> dict:
+    return await asyncio.to_thread(
+        lambda: {"ok": True, "plans": learning_mod.list_plans(config_mod.load())}
+    )
+
+
+@app.post("/api/learning/plans")
+async def learning_create(payload: dict) -> dict:
+    body = payload or {}
+    try:
+        plan = await asyncio.to_thread(
+            learning_mod.generate_plan,
+            body.get("topic") or "",
+            body.get("goal") or "",
+            body.get("current_level") or "零基础",
+            body.get("weekly_hours") or 6,
+            body.get("weeks") or 12,
+            config_mod.load(),
+        )
+        return {"ok": True, "plan": plan}
+    except learning_mod.LearningError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("生成学习计划失败")
+        raise HTTPException(status_code=502, detail=f"生成学习计划失败：{exc}") from exc
+
+
+@app.get("/api/learning/plans/{plan_id}")
+async def learning_get(plan_id: str) -> dict:
+    try:
+        return {"ok": True, "plan": await asyncio.to_thread(
+            learning_mod.get_plan, plan_id, config_mod.load())}
+    except learning_mod.LearningError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/api/learning/plans/{plan_id}")
+async def learning_delete(plan_id: str) -> dict:
+    ok = await asyncio.to_thread(learning_mod.delete_plan, plan_id, config_mod.load())
+    if not ok:
+        raise HTTPException(status_code=404, detail="找不到这份学习计划")
+    return {"ok": True}
+
+
+@app.post("/api/learning/plans/{plan_id}/stages/{stage_index}/exam")
+async def learning_exam(plan_id: str, stage_index: int) -> dict:
+    try:
+        result = await asyncio.to_thread(
+            learning_mod.generate_exam, plan_id, stage_index, config_mod.load())
+        return {"ok": True, **result}
+    except learning_mod.LearningError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("生成阶段考核失败")
+        raise HTTPException(status_code=502, detail=f"生成考核失败：{exc}") from exc
+
+
+@app.post("/api/learning/plans/{plan_id}/stages/{stage_index}/submit")
+async def learning_submit(plan_id: str, stage_index: int, payload: dict) -> dict:
+    answers = (payload or {}).get("answers")
+    try:
+        result = await asyncio.to_thread(
+            learning_mod.submit_exam, plan_id, stage_index, answers, config_mod.load())
+        return {"ok": True, **result}
+    except learning_mod.LearningError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("提交阶段考核失败")
+        raise HTTPException(status_code=502, detail=f"提交考核失败：{exc}") from exc
+
+
+@app.post("/api/learning/plans/{plan_id}/stages/{stage_index}/reset")
+async def learning_reset(plan_id: str, stage_index: int) -> dict:
+    try:
+        plan = await asyncio.to_thread(
+            learning_mod.reset_stage, plan_id, stage_index, config_mod.load())
+        return {"ok": True, "plan": plan}
+    except learning_mod.LearningError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # ------------------------------------------------------------------ 作业

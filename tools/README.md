@@ -11,6 +11,7 @@
 | `check_xunfei.py` | 讯飞语音评测离线测试：签名 URL、PCM 分帧、XML 分数/词/音素解析、未配置提示 | `python tools/check_xunfei.py` |
 | `check_lottery.py` | 彩票离线测试：注数公式、号码范围、胆拖约束、随机种子、奖级与奖金核对 | `python tools/check_lottery.py` |
 | `check_football.py` | 足球离线测试：500.com 行解析、赔率概率、比分/半全场/总进球推荐结构 | `python tools/check_football.py` |
+| `check_learning.py` | 学习路径离线测试：计划校验、判分、三次机会状态、答案不泄露 | `python tools/check_learning.py` |
 
 `check_pronounce.py` 和 `check_xunfei.py` 都不联网、不消耗 Azure/讯飞额度；`selfcheck.py` 也不联网、不用 API key。
 
