@@ -795,6 +795,9 @@ def main() -> int:
           "学习页明确写出 3 次机会与 80 分通过")
     check("大模型厂商" in learning_html and "/api/learning/settings" in learning_html,
           "学习页可单独选择大模型厂商")
+    index_html = (PROJECT_ROOT / "static" / "index.html").read_text(encoding="utf-8")
+    check("btnModelSettings" in index_html and "/api/model/settings" in index_html,
+          "工具箱首页有默认模型设置入口")
 
     file_server.shutdown()
     stub_server.shutdown()

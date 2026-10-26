@@ -289,6 +289,59 @@ def effective_learning_model(config: dict) -> dict:
     }
 
 
+def default_model_view(config: dict) -> dict:
+    """工具箱默认模型（summarizer）的设置视图。"""
+    section = dict(config.get("summarizer") or {})
+    provider = (section.get("provider") or "deepseek").strip()
+    try:
+        effective = effective_summarizer(config)
+        effective_info = {
+            "label": effective.get("label", ""),
+            "model": effective.get("model", ""),
+            "base_url": effective.get("base_url", ""),
+            "api_key_set": bool(effective.get("api_key")),
+        }
+    except Exception as exc:
+        effective_info = {"error": str(exc), "api_key_set": False}
+    return {
+        "provider": provider,
+        "model": section.get("model") or "",
+        "base_url": section.get("base_url") or "",
+        "api_key_masked": mask_key(section.get("api_key") or ""),
+        "api_key_set": bool(section.get("api_key")),
+        "effective": effective_info,
+        "options": [{"value": name, "label": preset["label"]}
+                    for name, preset in SUMMARIZER_PRESETS.items()],
+    }
+
+
+def save_default_model(payload: dict, config: dict) -> dict:
+    """保存工具箱默认模型；不会动各工具自己的覆盖设置。"""
+    payload = payload or {}
+    provider = str(payload.get("provider") or "deepseek").strip()
+    preset = SUMMARIZER_PRESETS.get(provider)
+    if preset is None:
+        raise RuntimeError("未知的默认模型厂商")
+    section = dict(config.get("summarizer") or {})
+    old_provider = (section.get("provider") or "deepseek").strip()
+    base_url = str(payload.get("base_url") or "").strip()
+    model = str(payload.get("model") or "").strip()
+    if provider == "custom" and (not base_url or not model):
+        raise RuntimeError("自定义模型需要填写 Base URL 和模型名")
+    section["provider"] = provider
+    section["base_url"] = base_url
+    section["model"] = model
+    key = str(payload.get("api_key") or "").strip()
+    if key:
+        section["api_key"] = key
+    elif provider != old_provider:
+        # 换厂商时不沿用旧厂商 key
+        section["api_key"] = ""
+    config["summarizer"] = section
+    save(config)
+    return default_model_view(config)
+
+
 def effective_github(config: dict) -> dict:
     """GitHub 链接匹配的配置（含 GITHUB_TOKEN 环境变量兜底）。"""
     section = dict(config.get("github") or {})

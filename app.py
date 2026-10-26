@@ -364,6 +364,25 @@ async def football_daily(day: str = "") -> dict:
 
 # ------------------------------------------------------------------ 学习路径
 
+@app.get("/api/model/settings")
+async def model_settings() -> dict:
+    """工具箱默认模型（未单独设置的工具使用它）。"""
+    return {"ok": True, "settings": config_mod.default_model_view(config_mod.load())}
+
+
+@app.post("/api/model/settings")
+async def model_save_settings(payload: dict) -> dict:
+    try:
+        settings = await asyncio.to_thread(
+            config_mod.save_default_model, payload or {}, config_mod.load())
+        return {"ok": True, "settings": settings}
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("保存默认模型设置失败")
+        raise HTTPException(status_code=502, detail=f"保存设置失败：{exc}") from exc
+
+
 @app.get("/api/learning/settings")
 async def learning_settings() -> dict:
     return {"ok": True, "settings": await asyncio.to_thread(

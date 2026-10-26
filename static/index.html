@@ -47,6 +47,28 @@
   .nav-group{font-size:11px; color:#9aa0ad; padding:10px 11px 4px; letter-spacing:.5px}
   .side-foot{border-top:1px solid var(--line); padding:11px 14px; color:var(--muted); font-size:11.5px; line-height:1.6}
   .side-foot code{background:#f1f2f5; padding:1px 4px; border-radius:4px; font-size:11px; word-break:break-all}
+  .side-model-wrap{border-top:1px solid var(--line); padding:10px 12px}
+  .side-model-btn{width:100%; font-family:inherit; font-size:12px; font-weight:600; padding:8px 10px;
+    border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); cursor:pointer}
+  .side-model-btn:hover{background:#f7f8fa}
+  .modal{position:fixed; inset:0; background:rgba(16,24,40,.45); z-index:80; display:flex;
+    align-items:flex-start; justify-content:center; padding:40px 16px; overflow:auto}
+  .modal.hidden{display:none}
+  .dialog{width:min(500px,100%); background:#fff; border-radius:14px; padding:20px 22px;
+    box-shadow:0 18px 50px rgba(16,24,40,.22)}
+  .dialog h2{font-size:17px; margin:0 0 4px}
+  .dialog .sub{color:var(--muted); font-size:12px; line-height:1.7; margin-bottom:14px}
+  .dialog .field{margin-bottom:12px}
+  .dialog label{display:block; font-size:12px; font-weight:600; margin-bottom:5px}
+  .dialog input,.dialog select{width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid var(--line);
+    border-radius:8px; font-family:inherit; font-size:13px; background:#fff; color:var(--ink)}
+  .dialog .hint{color:var(--muted); font-size:11.5px; line-height:1.7}
+  .dialog .status{font-size:12px; line-height:1.7; margin:8px 0; color:var(--muted)}
+  .dialog .actions{display:flex; justify-content:flex-end; gap:8px; margin-top:14px}
+  .dialog .actions button{font-family:inherit; font-size:12.5px; font-weight:600; padding:8px 14px; border-radius:8px; cursor:pointer}
+  .dialog .actions .ghost{border:1px solid var(--line); background:#fff; color:var(--ink)}
+  .dialog .actions .primary{border:1px solid var(--accent); background:var(--accent); color:#fff}
+  .dialog .actions button:disabled{opacity:.55; cursor:not-allowed}
   /* ---------------- 右侧工具面板 ---------------- */
   .stage{flex:1; min-width:0; height:100vh; display:flex; flex-direction:column}
   .topbar{
@@ -77,7 +99,7 @@
     nav.tools{display:flex; gap:6px; overflow-x:auto; padding:6px 10px 10px}
     .nav-item{flex:0 0 auto; width:auto; min-width:150px; margin:0}
     .nav-item .ds{display:none}
-    .side-foot{display:none}
+    .side-model-wrap{display:block}
     .stage{height:auto; flex:1}
     iframe{min-height:70vh}
   }
@@ -93,9 +115,10 @@
       </div>
     </div>
     <nav class="tools" id="toolNav"></nav>
-    <div class="side-foot">
-      新增工具：把 <code>&lt;id&gt;.html</code> 和 <code>&lt;id&gt;.meta.json</code>
-      放进 <code>static/tools/</code>，刷新本页即可，无需改代码。
+    <div class="side-model-wrap">
+      <button class="side-model-btn" id="btnModelSettings" type="button" title="设置默认大模型厂商">
+        ⚙ 默认模型设置
+      </button>
     </div>
   </aside>
 
@@ -112,6 +135,23 @@
       <div>往 <code>static/tools/</code> 里放一个 <code>xxx.html</code> 和一个 <code>xxx.meta.json</code> 就会出现。</div>
     </div>
   </main>
+
+  <div class="modal hidden" id="modelModal">
+    <div class="dialog">
+      <h2>默认模型设置</h2>
+      <div class="sub">没有单独设置模型的工具会使用这里；某个工具单独设置了大模型，则优先使用该工具自己的设置。</div>
+      <div class="field">
+        <label for="gmProvider">大模型厂商</label>
+        <select id="gmProvider"></select>
+      </div>
+      <div id="gmFields"></div>
+      <div class="status" id="gmStatus"></div>
+      <div class="actions">
+        <button class="ghost" id="gmCancel" type="button">取消</button>
+        <button class="primary" id="gmSave" type="button">保存</button>
+      </div>
+    </div>
+  </div>
 
 <script>
 let tools = [], currentId = "";
@@ -132,7 +172,7 @@ function renderNav(){
   });
 }
 function escapeHtml(s){
-  return String(s == null ? "" : s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&gt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+  return String(s == null ? "" : s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 }
 function select(id){
   const tool = tools.find(t => t.id === id) || tools[0];
@@ -149,6 +189,106 @@ function select(id){
   if(location.hash !== want) history.replaceState(null, "", want);
   document.title = tool.name + " · 工具箱";
 }
+
+/* ---------------- 默认模型设置 ---------------- */
+let defaultModel = null;
+
+function renderModelFields(){
+  const provider = $("gmProvider").value;
+  const settings = defaultModel || {};
+  const fields = $("gmFields");
+  if(provider === "inherit"){
+    fields.innerHTML = "";
+    return;
+  }
+  const keyHint = settings.api_key_masked
+    ? "已保存：" + settings.api_key_masked + "（留空保持）"
+    : "填写 API key";
+  const baseField = provider === "custom"
+    ? `<div class="field"><label for="gmBase">Base URL</label>
+       <input id="gmBase" value="${escapeHtml(settings.base_url || "")}" placeholder="https://api.example.com/v1" /></div>`
+    : "";
+  fields.innerHTML = `<div class="field"><label for="gmModel">模型名（可选）</label>
+    <input id="gmModel" value="${escapeHtml(settings.model || "")}" placeholder="留空用厂商默认模型" /></div>
+    ${baseField}
+    <div class="field"><label for="gmKey">API key（可选）</label>
+    <input id="gmKey" type="password" autocomplete="off" placeholder="${escapeHtml(keyHint)}" /></div>`;
+}
+
+function renderDefaultModel(){
+  const settings = defaultModel || {};
+  $("gmProvider").innerHTML = (settings.options || []).map((item) =>
+    `<option value="${escapeHtml(item.value)}"${item.value === settings.provider ? " selected" : ""}>${escapeHtml(item.label)}</option>`
+  ).join("");
+  renderModelFields();
+  const eff = settings.effective || {};
+  $("gmStatus").innerHTML = eff.error
+    ? `<span style="color:#a4261b">${escapeHtml(eff.error)}</span>`
+    : `当前默认：<b>${escapeHtml(eff.label || "—")} / ${escapeHtml(eff.model || "—")}</b>`
+      + (eff.api_key_set ? "" : `<br /><span style="color:#a16800">还没有可用 API key</span>`)
+      + `<br />各工具如果单独设置了模型，会优先使用工具自己的设置。`;
+  $("btnModelSettings").title = eff.error ? "默认模型设置（未配置完整）"
+    : `默认模型：${eff.label || ""} / ${eff.model || ""}`;
+}
+
+async function loadDefaultModel(){
+  try{
+    const res = await fetch("/api/model/settings");
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.detail || ("HTTP " + res.status));
+    defaultModel = data.settings;
+    renderDefaultModel();
+  }catch(e){
+    $("gmStatus").innerHTML = `<span style="color:#a4261b">${escapeHtml(e.message)}</span>`;
+  }
+}
+
+function openModelModal(){
+  $("modelModal").classList.remove("hidden");
+  if(defaultModel) renderDefaultModel();
+  else loadDefaultModel();
+}
+
+async function saveDefaultModel(){
+  const provider = $("gmProvider").value;
+  const payload = {
+    provider,
+    model: $("gmModel") ? $("gmModel").value.trim() : "",
+    base_url: $("gmBase") ? $("gmBase").value.trim() : "",
+    api_key: $("gmKey") ? $("gmKey").value.trim() : ""
+  };
+  $("gmSave").disabled = true;
+  $("gmSave").textContent = "保存中…";
+  try{
+    const res = await fetch("/api/model/settings", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.detail || ("HTTP " + res.status));
+    defaultModel = data.settings;
+    renderDefaultModel();
+    $("gmStatus").innerHTML += `<br /><span style="color:#0f7b3d">已保存。</span>`;
+  }catch(e){
+    $("gmStatus").innerHTML = `<span style="color:#a4261b">${escapeHtml(e.message)}</span>`;
+  }finally{
+    $("gmSave").disabled = false;
+    $("gmSave").textContent = "保存";
+  }
+}
+
+$("btnModelSettings").onclick = openModelModal;
+$("gmCancel").onclick = () => $("modelModal").classList.add("hidden");
+$("gmProvider").onchange = renderModelFields;
+$("gmSave").onclick = saveDefaultModel;
+$("modelModal").addEventListener("click", (event) => {
+  if(event.target === $("modelModal")) $("modelModal").classList.add("hidden");
+});
+document.addEventListener("keydown", (event) => {
+  if(event.key === "Escape") $("modelModal").classList.add("hidden");
+});
+loadDefaultModel();
 async function boot(){
   try{
     const res = await fetch("/api/tools");

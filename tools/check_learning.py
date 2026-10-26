@@ -141,6 +141,11 @@ def main() -> int:
     view = learning.settings_view(custom_cfg)
     check("api_key" not in view and view["effective"]["model"] == "custom-model",
           "模型设置视图不泄露明文 key")
+    default_view = learning.config_mod.default_model_view(inherit_cfg)
+    check(default_view["provider"] == "deepseek"
+          and default_view["effective"]["api_key_set"]
+          and "api_key" not in default_view,
+          "工具箱默认模型视图可读且不泄露 key")
 
     failed_count = 0
     for ok, label in results:
