@@ -16,11 +16,12 @@
   .layout{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:start}
   .field{margin-bottom:12px}
   .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
-  .field input,.field select,.field textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);
+  .field input,.field select,.field textarea{width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);
     border-radius:8px;font-family:inherit;font-size:13px;background:#fff;color:var(--ink)}
   .field textarea{min-height:74px;resize:vertical;line-height:1.6}
   .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid rgba(37,99,235,.18);border-color:var(--accent)}
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+  .row2 > .field{min-width:0}
   button.primary{width:100%;font-family:inherit;font-size:13.5px;font-weight:600;padding:11px 16px;border-radius:9px;
     border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
   button.primary:hover{background:var(--accent-dark)}
