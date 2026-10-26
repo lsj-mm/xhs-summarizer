@@ -71,6 +71,9 @@ def main() -> int:
           "资源生成可点击搜索入口")
     check("github.com" in plan["stages"][1]["resources"][0]["url"],
           "项目资源走 GitHub 搜索")
+    check("bing.com" in plan["stages"][0]["resources"][0]["url"]
+          and "douban.com" not in plan["stages"][0]["resources"][0]["url"],
+          "教材/文档资源走 Bing 搜索入口，避免空白的豆瓣页")
 
     questions = sample_questions()
     result = learning.grade_answers(questions, [q["answer"] for q in questions])

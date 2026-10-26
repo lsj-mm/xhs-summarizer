@@ -140,16 +140,18 @@ def _extract_json(text: str) -> dict:
 
 
 def _resource_url(kind: str, query: str) -> str:
-    q = quote_plus(str(query or "").strip())
+    text = str(query or "").strip()
     if kind == "教材":
-        return f"https://search.douban.com/book/subject_search?search_text={q}"
+        return f"https://www.bing.com/search?q={quote_plus(text + ' 教材')}"
     if kind == "项目":
-        return f"https://github.com/search?q={q}"
+        return f"https://github.com/search?q={quote_plus(text)}"
     if kind == "视频":
-        return f"https://search.bilibili.com/all?keyword={q}"
+        return f"https://www.bing.com/search?q={quote_plus(text + ' site:bilibili.com')}"
+    if kind == "课程":
+        return f"https://www.bing.com/search?q={quote_plus(text + ' 课程')}"
     if kind == "官方文档":
-        return f"https://www.bing.com/search?q={quote_plus(str(query or '') + ' 官方文档')}"
-    return f"https://www.bing.com/search?q={q}"
+        return f"https://www.bing.com/search?q={quote_plus(text)}"
+    return f"https://www.bing.com/search?q={quote_plus(text)}"
 
 
 def _normalize_plan(data: dict) -> dict:
@@ -279,7 +281,7 @@ def generate_plan(topic: str, goal: str, current_level: str = "零基础",
 要求：
 1. 阶段从当前基础出发，最终出口必须覆盖目标水平；不要跳步。
 2. 每个阶段 1~12 周，阶段总周数尽量接近 {weeks} 周。
-3. 资源给真实存在的经典教材/官方文档/公开课程/项目方向，但不要写 URL，也不要编造具体课程编号；query 写可检索的名称。
+3. 资源给真实存在的经典教材/官方文档/公开课程/项目方向，但不要写 URL，也不要编造具体课程编号；query 用 2~8 个可检索关键词，不要整段论文标题，教材/课程优先用中文通用名。
 4. 考核重点要能出选择题，也要有实操作品；难度逐阶段提高。
 5. 只输出 JSON。"""
 
@@ -345,8 +347,16 @@ def _public_questions(exam: dict | None):
 def public_plan(record: dict) -> dict:
     stages = []
     for i, (stage, state) in enumerate(zip(record["plan"]["stages"], record["stages"])):
+        resources = [
+            {**res, "url": _resource_url(
+                str(res.get("type") or "搜索"),
+                str(res.get("query") or res.get("title") or ""),
+            )}
+            for res in (stage.get("resources") or [])
+        ]
         stages.append({
             **stage,
+            "resources": resources,
             "index": i,
             "status": state.get("status", "locked"),
             "attempts": state.get("attempts", 0),
