@@ -28,7 +28,7 @@ resolve.py → download.py → audio.py → asr.py → summarize.py → github.p
 | `keywords.py` | 多语言关键字：AI 解释、GitHub Search API 代理请求 |
 | `lottery.py` | 彩票模拟：官方历史数据抓取/缓存、走势统计、注数公式、模拟选号 |
 | `football.py` | 竞彩足球参考：500.com 赛程/赔率、比分/半全场/总进球 |
-| `learning.py` | 学习路径：AI 规划、阶段状态、判分、3 次机会与重学 |
+| `learning.py` | 学习路径：AI 规划、模型选择、阶段状态、判分、3 次机会与重学 |
 
 ## 约定
 

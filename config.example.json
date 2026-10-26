@@ -29,6 +29,12 @@
     "temperature": 0.3,
     "max_input_chars": 20000
   },
+  "learning": {
+    "provider": "inherit",
+    "api_key": "",
+    "base_url": "",
+    "model": ""
+  },
   "summary": {
     "include_transcript": true,
     "extra_instruction": ""

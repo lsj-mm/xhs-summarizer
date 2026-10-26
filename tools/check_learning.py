@@ -124,6 +124,24 @@ def main() -> int:
     except learning.LearningError:
         check(True, "选项不足时明确报错")
 
+    inherit_cfg = {
+        "summarizer": {"provider": "deepseek", "model": "deepseek-chat", "api_key": "global-key"},
+        "learning": {"provider": "inherit"},
+    }
+    check(learning.config_mod.effective_learning_model(inherit_cfg)["model"] == "deepseek-chat",
+          "学习模型默认跟随工具箱总结模型")
+    custom_cfg = {
+        "summarizer": {"provider": "deepseek", "model": "deepseek-chat", "api_key": "global-key"},
+        "learning": {"provider": "custom", "base_url": "https://example.com/v1",
+                     "model": "custom-model", "api_key": "custom-key"},
+    }
+    custom = learning.config_mod.effective_learning_model(custom_cfg)
+    check(custom["model"] == "custom-model" and custom["base_url"] == "https://example.com/v1",
+          "学习工具可以单独指定厂商和模型")
+    view = learning.settings_view(custom_cfg)
+    check("api_key" not in view and view["effective"]["model"] == "custom-model",
+          "模型设置视图不泄露明文 key")
+
     failed_count = 0
     for ok, label in results:
         print(("  ✓ " if ok else "  ✗ ") + label)

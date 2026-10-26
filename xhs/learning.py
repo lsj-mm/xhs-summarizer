@@ -70,6 +70,58 @@ def _now() -> str:
     return dt.datetime.now().astimezone().isoformat(timespec="seconds")
 
 
+def settings_view(config: dict | None = None) -> dict:
+    config = config or config_mod.load()
+    section = dict(config.get("learning") or {})
+    provider = (section.get("provider") or "inherit").strip() or "inherit"
+    try:
+        effective = config_mod.effective_learning_model(config)
+        effective_info = {
+            "label": effective.get("label", ""),
+            "model": effective.get("model", ""),
+            "base_url": effective.get("base_url", ""),
+            "api_key_set": bool(effective.get("api_key")),
+        }
+        own_key_masked = config_mod.mask_key(section.get("api_key") or "")
+    except Exception as exc:
+        effective_info = {"error": str(exc), "api_key_set": False}
+        own_key_masked = config_mod.mask_key(section.get("api_key") or "")
+    options = [{"value": "inherit", "label": "跟随工具箱设置"}]
+    options += [{"value": name, "label": preset["label"]}
+                for name, preset in config_mod.SUMMARIZER_PRESETS.items()]
+    return {
+        "provider": provider,
+        "model": section.get("model") or "",
+        "base_url": section.get("base_url") or "",
+        "api_key_masked": own_key_masked,
+        "api_key_set": bool(section.get("api_key")),
+        "effective": effective_info,
+        "options": options,
+    }
+
+
+def save_settings(payload: dict, config: dict | None = None) -> dict:
+    config = config or config_mod.load()
+    payload = payload or {}
+    provider = str(payload.get("provider") or "inherit").strip() or "inherit"
+    if provider not in ("inherit", *config_mod.SUMMARIZER_PRESETS.keys()):
+        raise LearningError("未知的模型厂商")
+    section = dict(config.get("learning") or {})
+    old_provider = (section.get("provider") or "inherit").strip() or "inherit"
+    section["provider"] = provider
+    section["base_url"] = str(payload.get("base_url") or "").strip()
+    section["model"] = str(payload.get("model") or "").strip()
+    key = str(payload.get("api_key") or "").strip()
+    if key:
+        section["api_key"] = key
+    elif provider != old_provider:
+        # 换厂商时旧 key 不能继续借用；留空则改用该厂商的环境变量/全局 key
+        section["api_key"] = ""
+    config["learning"] = section
+    config_mod.save(config)
+    return settings_view(config)
+
+
 def _extract_json(text: str) -> dict:
     raw = (text or "").strip()
     raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.I)
@@ -187,7 +239,10 @@ def generate_plan(topic: str, goal: str, current_level: str = "零基础",
     except (TypeError, ValueError) as exc:
         raise LearningError("每周小时和周期需要是整数") from exc
 
-    cfg = config_mod.effective_summarizer(config)
+    try:
+        cfg = config_mod.effective_learning_model(config)
+    except RuntimeError as exc:
+        raise LearningError(str(exc)) from exc
     if not cfg.get("api_key"):
         raise LearningError("还没有配置总结模型 API key，请先在工具箱首页设置里填写")
 
@@ -403,7 +458,10 @@ def generate_exam(plan_id: str, stage_index: int, config: dict | None = None) ->
                 "created_at": state["exam"].get("created_at")}
 
     stage = record["plan"]["stages"][stage_index]
-    cfg = config_mod.effective_summarizer(config)
+    try:
+        cfg = config_mod.effective_learning_model(config)
+    except RuntimeError as exc:
+        raise LearningError(str(exc)) from exc
     if not cfg.get("api_key"):
         raise LearningError("还没有配置总结模型 API key")
     try:

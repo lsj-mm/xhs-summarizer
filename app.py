@@ -364,6 +364,25 @@ async def football_daily(day: str = "") -> dict:
 
 # ------------------------------------------------------------------ 学习路径
 
+@app.get("/api/learning/settings")
+async def learning_settings() -> dict:
+    return {"ok": True, "settings": await asyncio.to_thread(
+        learning_mod.settings_view, config_mod.load())}
+
+
+@app.post("/api/learning/settings")
+async def learning_save_settings(payload: dict) -> dict:
+    try:
+        settings = await asyncio.to_thread(
+            learning_mod.save_settings, payload or {}, config_mod.load())
+        return {"ok": True, "settings": settings}
+    except learning_mod.LearningError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("保存学习模型设置失败")
+        raise HTTPException(status_code=502, detail=f"保存设置失败：{exc}") from exc
+
+
 @app.get("/api/learning/plans")
 async def learning_plans() -> dict:
     return await asyncio.to_thread(

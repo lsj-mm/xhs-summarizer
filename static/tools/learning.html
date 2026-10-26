@@ -22,6 +22,7 @@
   .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid rgba(37,99,235,.18);border-color:var(--accent)}
   .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
   .row2 > .field{min-width:0}
+  .settings-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
   button.primary{width:100%;font-family:inherit;font-size:13.5px;font-weight:600;padding:11px 16px;border-radius:9px;
     border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
   button.primary:hover{background:var(--accent-dark)}
@@ -116,6 +117,20 @@
   <div class="layout">
     <aside>
       <div class="card">
+        <div class="settings-head">
+          <h2 style="margin:0">AI 模型</h2>
+          <span class="pill" id="modelPill">跟随工具箱</span>
+        </div>
+        <div class="field" style="margin-top:10px">
+          <label for="modelProvider">大模型厂商</label>
+          <select id="modelProvider"></select>
+        </div>
+        <div id="modelFields"></div>
+        <button class="ghost" id="saveModel" type="button" style="width:100%">保存模型设置</button>
+        <p class="hint" id="modelStatus" style="margin:8px 0 0"></p>
+      </div>
+
+      <div class="card" style="margin-top:14px">
         <h2>新建学习计划</h2>
         <div class="field">
           <label for="topic">学习主题</label>
@@ -191,6 +206,7 @@ const state = {
   plans: [],
   exam: null,
   examStage: -1,
+  modelSettings: null,
   loading: false
 };
 
@@ -210,6 +226,82 @@ async function api(url, options) {
   try { data = await response.json(); } catch (e) { /* ignore */ }
   if (!response.ok) throw new Error((data && data.detail) || ('HTTP ' + response.status));
   return data;
+}
+
+function renderModelFields() {
+  const provider = $('modelProvider').value;
+  const settings = state.modelSettings || {};
+  const fields = $('modelFields');
+  if (provider === 'inherit') {
+    fields.innerHTML = '<p class="hint" style="margin:0 0 10px">使用工具箱首页设置里的总结模型。</p>';
+    return;
+  }
+  const keyHint = settings.api_key_masked
+    ? '已保存：' + settings.api_key_masked + '（留空保持）'
+    : '填写 API key';
+  const baseField = provider === 'custom'
+    ? '<div class="field"><label for="modelBase">Base URL</label>'
+      + '<input id="modelBase" value="' + esc(settings.base_url || '') + '" placeholder="https://api.example.com/v1" /></div>'
+    : '';
+  fields.innerHTML = '<div class="field"><label for="modelName">模型名（可选）</label>'
+    + '<input id="modelName" value="' + esc(settings.model || '') + '" placeholder="留空用厂商默认模型" /></div>'
+    + baseField
+    + '<div class="field"><label for="modelKey">API key（可选）</label>'
+    + '<input id="modelKey" type="password" autocomplete="off" placeholder="' + esc(keyHint) + '" /></div>';
+}
+
+function renderModelSettings() {
+  const settings = state.modelSettings;
+  if (!settings) return;
+  const select = $('modelProvider');
+  select.innerHTML = (settings.options || []).map((item) =>
+    '<option value="' + esc(item.value) + '"' + (item.value === settings.provider ? ' selected' : '') + '>'
+    + esc(item.label) + '</option>'
+  ).join('');
+  renderModelFields();
+  const effective = settings.effective || {};
+  $('modelPill').textContent = effective.label || '未配置';
+  $('modelStatus').innerHTML = effective.error
+    ? '<span style="color:#a4261b">' + esc(effective.error) + '</span>'
+    : '当前实际使用：<b>' + esc(effective.label || '—') + ' / ' + esc(effective.model || '—') + '</b>'
+      + (effective.api_key_set ? '' : '<br /><span style="color:#a16800">还没有可用 API key</span>');
+}
+
+async function loadModelSettings() {
+  try {
+    const data = await api('/api/learning/settings');
+    state.modelSettings = data.settings;
+    renderModelSettings();
+  } catch (err) {
+    $('modelStatus').innerHTML = '<span style="color:#a4261b">' + esc(err.message) + '</span>';
+  }
+}
+
+async function saveModelSettings() {
+  const provider = $('modelProvider').value;
+  const payload = {
+    provider,
+    model: $('modelName') ? $('modelName').value.trim() : '',
+    base_url: $('modelBase') ? $('modelBase').value.trim() : '',
+    api_key: $('modelKey') ? $('modelKey').value.trim() : ''
+  };
+  $('saveModel').disabled = true;
+  $('saveModel').textContent = '保存中…';
+  try {
+    const data = await api('/api/learning/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    state.modelSettings = data.settings;
+    renderModelSettings();
+    $('modelStatus').innerHTML += '<br /><span style="color:#0f7b3d">已保存。</span>';
+  } catch (err) {
+    $('modelStatus').innerHTML = '<span style="color:#a4261b">' + esc(err.message) + '</span>';
+  } finally {
+    $('saveModel').disabled = false;
+    $('saveModel').textContent = '保存模型设置';
+  }
 }
 
 function statusLabel(status) {
@@ -468,6 +560,8 @@ async function deletePlan() {
 
 $('createBtn').addEventListener('click', createPlan);
 $('deletePlan').addEventListener('click', deletePlan);
+$('modelProvider').addEventListener('change', renderModelFields);
+$('saveModel').addEventListener('click', saveModelSettings);
 $('planList').addEventListener('click', (event) => {
   const item = event.target.closest('[data-plan]');
   if (item) loadPlan(item.getAttribute('data-plan'));
@@ -483,6 +577,7 @@ $('examModal').addEventListener('click', (event) => {
 });
 
 async function boot() {
+  await loadModelSettings();
   await loadPlans();
   const saved = localStorage.getItem('learning_plan');
   if (saved && state.plans.some((p) => p.id === saved)) {

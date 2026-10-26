@@ -793,6 +793,8 @@ def main() -> int:
           "学习路径工具有 meta.json")
     check("3 次" in learning_html and "80 分" in learning_html,
           "学习页明确写出 3 次机会与 80 分通过")
+    check("大模型厂商" in learning_html and "/api/learning/settings" in learning_html,
+          "学习页可单独选择大模型厂商")
 
     file_server.shutdown()
     stub_server.shutdown()

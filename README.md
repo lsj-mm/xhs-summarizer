@@ -246,6 +246,8 @@ $env:XUNFEI_API_SECRET="你的 APISecret"
 按主题、当前基础和目标水平，生成 2~8 个递进阶段，并为每阶段配置学习内容、资源入口、考核重点和实操作品。
 
 - **计划生成**：复用已配置的 DeepSeek；从当前基础逆向拆解到目标，阶段目标要求可衡量。
+- **模型设置**：工具内可单独选择「跟随工具箱 / DeepSeek / 自定义 OpenAI 兼容」，
+  也可以单独填模型名、Base URL 和 API key；默认跟随工具箱的总结模型。
 - **资源**：AI 只给资源名称和搜索词，程序生成 Bing / 豆瓣 / GitHub / B 站的搜索入口，
   不编造具体课程、书号或链接；资源是否适合仍需自己判断。
 - **考核**：每阶段 AI 生成 10 道单选题，程序自动判分，**80 分通过**；
@@ -255,7 +257,8 @@ $env:XUNFEI_API_SECRET="你的 APISecret"
 - **说明**：选择题只能检验部分理解；每阶段的实操作品建议自己保留，作为真正的能力证据。
 
 接口：`POST/GET /api/learning/plans`、`GET/DELETE /api/learning/plans/{id}`、
-`POST /api/learning/plans/{id}/stages/{index}/exam|submit|reset`；
+`POST /api/learning/plans/{id}/stages/{index}/exam|submit|reset`、
+`GET/POST /api/learning/settings`；
 离线测试 `python tools/check_learning.py`。
 
 ---
@@ -443,7 +446,7 @@ python tools/selfcheck.py
 node tools/check_finance.js
 ```
 
-**验证状态**：离线自检 128 项、HTTP 接口层 12 项均通过。另外用一条真实公开笔记跑了完整链路
+**验证状态**：离线自检 129 项、HTTP 接口层 12 项均通过。另外用一条真实公开笔记跑了完整链路
 （短链跟跳转 → 下载 9.0 MB / 时长 02:34 → 标题、作者、正文、发布日期全部取对 → 提取出 4 个工具
 → 用**真实 GitHub 接口**核实链接 → 生成 md：REA、Ghidra 都正确匹配到仓库，另外两个老实写「未找到」）。
 转写与总结两步用的是本地假服务替身，未消耗任何额度；真实付费接口的表现取决于你的 key 与账户状态。

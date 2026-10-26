@@ -67,6 +67,13 @@ DEFAULTS: dict = {
         "use_note_text": True,
         "extra_instruction": "",
     },
+    # 学习路径工具自己的模型选择；provider 为空/inherit 时跟随 summarizer
+    "learning": {
+        "provider": "inherit",
+        "api_key": "",
+        "base_url": "",
+        "model": "",
+    },
     "github": {
         # 给提取到的工具名匹配 GitHub 仓库。匹配不到就写「未找到」，绝不编造链接。
         "enabled": True,
@@ -245,6 +252,41 @@ def effective_summarizer(config: dict) -> dict:
     if not resolved["base_url"] or not resolved["model"]:
         raise RuntimeError(f"模型 {preset['label']} 需要自己填写 base_url 和 model")
     return resolved
+
+
+def effective_learning_model(config: dict) -> dict:
+    """学习路径工具使用的模型；默认跟随 summarizer，也可单独指定。"""
+    section = dict(config.get("learning") or {})
+    provider = (section.get("provider") or "inherit").strip()
+    if provider in ("", "inherit"):
+        return effective_summarizer(config)
+
+    preset = SUMMARIZER_PRESETS.get(provider)
+    if preset is None:
+        raise RuntimeError(f"未知的学习模型厂商 {provider!r}")
+
+    # 只有和全局总结模型是同一家时，才复用全局 key，避免把 key 混到别家
+    global_section = dict(config.get("summarizer") or {})
+    global_provider = (global_section.get("provider") or "deepseek").strip()
+    key = (section.get("api_key") or "").strip()
+    if not key and provider == global_provider:
+        key = (global_section.get("api_key") or "").strip()
+    key = key or _env_key(preset["key_env"]) or _env_key("LLM_API_KEY")
+
+    base_url = (section.get("base_url") or preset["base_url"] or "").rstrip("/")
+    model = section.get("model") or preset["model"]
+    if not base_url or not model:
+        raise RuntimeError(f"模型 {preset['label']} 需要自己填写 base_url 和 model")
+    return {
+        "provider": provider,
+        "protocol": preset["protocol"],
+        "base_url": base_url,
+        "model": model,
+        "api_key": key,
+        "temperature": float(global_section.get("temperature", 0.3)),
+        "max_input_chars": int(global_section.get("max_input_chars") or 20000),
+        "label": preset["label"],
+    }
 
 
 def effective_github(config: dict) -> dict:
