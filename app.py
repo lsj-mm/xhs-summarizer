@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from xhs import asr as asr_mod
@@ -32,6 +32,7 @@ from xhs import learning as learning_mod
 from xhs import lottery as lottery_mod
 from xhs import pipeline as pipeline_mod
 from xhs import pronounce as pronounce_mod
+from xhs import review as review_mod
 from xhs import summarize as summarize_mod
 
 logging.basicConfig(
@@ -482,6 +483,52 @@ async def learning_reset(plan_id: str, stage_index: int) -> dict:
         return {"ok": True, "plan": plan}
     except learning_mod.LearningError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+# ------------------------------------------------------------------ 代码审查
+
+@app.get("/api/review/info")
+async def review_info() -> dict:
+    return {"ok": True, **await asyncio.to_thread(review_mod.info, config_mod.load())}
+
+
+@app.post("/api/review/run")
+async def review_run(payload: dict) -> dict:
+    body = payload or {}
+    try:
+        result = await asyncio.to_thread(
+            review_mod.run,
+            body.get("project") or "",
+            body.get("mode") or "scan",
+            body.get("paths") or "",
+            body.get("exclude") or "",
+            int(body.get("max_tokens") or 0),
+            config_mod.load(),
+        )
+        return {"ok": True, **result}
+    except review_mod.ReviewError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("代码审查失败")
+        raise HTTPException(status_code=502, detail=f"代码审查失败：{exc}") from exc
+
+
+@app.get("/api/review/report/{report_id}")
+async def review_report(report_id: str):
+    try:
+        text = await asyncio.to_thread(review_mod.read_report, report_id)
+        return PlainTextResponse(text, media_type="text/markdown; charset=utf-8")
+    except review_mod.ReviewError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/api/review/json/{report_id}")
+async def review_json(report_id: str):
+    try:
+        path = await asyncio.to_thread(review_mod.report_json_path, report_id)
+        return FileResponse(path, media_type="application/json", filename=path.name)
+    except review_mod.ReviewError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 # ------------------------------------------------------------------ 作业

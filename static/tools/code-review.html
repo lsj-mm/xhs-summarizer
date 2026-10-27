@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>代码审查</title>
+<link rel="stylesheet" href="/static/tools/_shared/base.css" />
+<script src="/static/tools/_shared/markdown.js"></script>
+<style>
+  .wrap{max-width:1120px;margin:0 auto;padding:24px 20px 56px}
+  header.top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  header.top .logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#0f766e,#2563eb);
+    display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 auto}
+  header.top h1{font-size:18px;margin:0;font-weight:650}
+  header.top .sub{color:var(--muted);font-size:12.5px}
+  .grow{flex:1}
+  .warn{background:#fffaf0;border:1px solid #f0dcb4;color:#7a5500;border-radius:10px;padding:10px 13px;
+    font-size:12.5px;line-height:1.7;margin-bottom:14px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+  .field input,.field select,.field textarea{width:100%;max-width:100%;min-width:0;box-sizing:border-box;
+    padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;background:#fff;color:var(--ink)}
+  .field textarea{min-height:64px;resize:vertical;line-height:1.6}
+  .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+  .row2 > .field{min-width:0}
+  button.primary{width:100%;font-family:inherit;font-size:13.5px;font-weight:600;padding:11px 16px;border-radius:9px;
+    border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+  button.primary:hover{background:var(--accent-dark)}
+  button.primary:disabled{opacity:.55;cursor:not-allowed}
+  .hint{color:var(--muted);font-size:11.5px;line-height:1.7}
+  .pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11px;
+    background:#f1f2f5;color:var(--muted)}
+  .pill.ok{background:#e7f7ee;color:#0f7b3d}
+  .pill.warn{background:#fff5e5;color:#8a6100}
+  .pill.err{background:#fdecea;color:#b42318}
+  .loading{color:var(--muted);font-size:13px;padding:10px 0}
+  .err{background:#fff7f6;border:1px solid #f3c9c4;color:#a4261b;border-radius:9px;padding:10px 12px;
+    font-size:12.5px;white-space:pre-wrap;line-height:1.7}
+  .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px}
+  .summary .item{background:#fafbfc;border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+  .summary .k{font-size:11.5px;color:var(--muted)}
+  .summary .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+  .comment{border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:10px;background:#fcfcfd}
+  .comment-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:12.5px;margin-bottom:7px}
+  .comment-head .path{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--muted)}
+  .sev{font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;text-transform:uppercase}
+  .sev.high{background:#fdecea;color:#b42318}
+  .sev.medium{background:#fff5e5;color:#8a6100}
+  .sev.low{background:#eef2ff;color:#3730a3}
+  .sev.unknown{background:#f1f2f5;color:var(--muted)}
+  .comment-body{font-size:12.5px;line-height:1.8}
+  .code{margin-top:8px;background:#0f172a;color:#e2e8f0;border-radius:8px;padding:9px 11px;overflow:auto;
+    font-family:ui-monospace,Consolas,monospace;font-size:11.5px;line-height:1.6;white-space:pre-wrap}
+  .report-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .report-head h2{margin:0;font-size:17px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .actions a{font-size:12px;color:var(--accent-dark);border:1px solid var(--line);border-radius:7px;padding:6px 10px;text-decoration:none;background:#fff}
+  .actions a:hover{background:#f7f8fa}
+  .prose{font-size:13px;line-height:1.8}
+  .prose h2,.prose h3{margin:14px 0 5px}
+  .prose ul{padding-left:20px}
+  .prose code{background:#f1f2f5;padding:1px 4px;border-radius:4px;font-size:12px}
+  .prose pre{background:#0f172a;color:#e2e8f0;padding:10px;border-radius:8px;overflow:auto}
+  .empty{text-align:center;color:var(--muted);padding:38px 16px;font-size:13px}
+  .empty .big{font-size:36px;margin-bottom:6px}
+  .hidden{display:none !important}
+  @media (max-width:760px){.row2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">🔍</div>
+    <div>
+      <h1>代码审查</h1>
+      <div class="sub">OpenCodeReview × 工具箱默认大模型 · 行级问题 · Markdown 报告</div>
+    </div>
+    <div class="grow"></div>
+    <span class="pill">AI 审查仅供参考</span>
+  </header>
+
+  <div class="warn">
+    <b>审查前请确认：</b>代码会被发送给你在首页设置的大模型服务；项目较大时 token 消耗和耗时都会增加。
+    AI 审查可能有误报/漏报，报告不替代人工评审。
+  </div>
+
+  <div class="card">
+    <div id="reviewInfo" class="hint">正在检查 OCR 和模型配置…</div>
+    <div class="field" style="margin-top:10px">
+      <label for="rvProject">项目目录</label>
+      <input id="rvProject" placeholder="例如：E:\AISoft\xhs-summarizer" />
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="rvMode">审查模式</label>
+        <select id="rvMode">
+          <option value="scan">全量扫描（不需要 diff）</option>
+          <option value="review">Git 变更审查（未提交/暂存）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="rvMaxTokens">Token 预算（0 = 不限）</label>
+        <input id="rvMaxTokens" type="number" min="0" step="1000" value="0" />
+      </div>
+    </div>
+    <div id="scanFields">
+      <div class="row2">
+        <div class="field">
+          <label for="rvPaths">只审查这些路径（可选，逗号分隔）</label>
+          <input id="rvPaths" placeholder="例如：xhs,static/tools" />
+        </div>
+        <div class="field">
+          <label for="rvExclude">排除路径（可选）</label>
+          <input id="rvExclude" placeholder="例如：**/testdata/*,_vendor/**" />
+        </div>
+      </div>
+    </div>
+    <button class="primary" id="rvRun" type="button">开始审查并生成报告</button>
+    <p class="hint" style="margin:8px 0 0">全量扫描会调用模型逐文件审查；首次建议在「只审查这些路径」里限定一个目录。</p>
+  </div>
+
+  <div id="rvMessage"></div>
+  <section class="card hidden" id="rvReportCard"></section>
+
+  <div class="card" id="rvEmpty" style="margin-top:14px">
+    <div class="empty">
+      <div class="big">🔍</div>
+      <div>填项目路径，点「开始审查并生成报告」。</div>
+      <div style="margin-top:6px">会先检查 ocr.exe 和默认模型，再把报告写到 work/codereview/。</div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const $ = (id) => document.getElementById(id);
+const state = { info: null, report: null, running: false };
+
+function esc(text) {
+  return String(text == null ? '' : text).replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
+async function api(url, options) {
+  const response = await fetch(url, options);
+  let data = {};
+  try { data = await response.json(); } catch (e) { /* ignore */ }
+  if (!response.ok) throw new Error((data && data.detail) || ('HTTP ' + response.status));
+  return data;
+}
+
+function setMessage(html) { $('rvMessage').innerHTML = html || ''; }
+
+async function loadInfo() {
+  try {
+    const data = await api('/api/review/info');
+    state.info = data;
+    $('rvProject').value = data.default_project || '';
+    const ok = data.ocr && !data.ocr_error;
+    $('reviewInfo').innerHTML = (ok
+      ? '<span class="pill ok">OCR 已就绪</span> '
+      : '<span class="pill err">OCR 不可用</span> ')
+      + '<span class="pill">默认模型：' + esc(data.model || '未配置') + '</span>'
+      + (data.ocr_error ? '<div class="err" style="margin-top:8px">' + esc(data.ocr_error) + '</div>' : '');
+  } catch (err) {
+    $('reviewInfo').innerHTML = '<div class="err">' + esc(err.message) + '</div>';
+  }
+}
+
+function renderReport(data) {
+  state.report = data;
+  $('rvEmpty').classList.add('hidden');
+  $('rvReportCard').classList.remove('hidden');
+  const summary = data.summary || {};
+  const comments = data.comments || [];
+  const summaryHtml = '<div class="summary">'
+    + '<div class="item"><div class="k">审查文件</div><div class="v">' + esc(summary.files_reviewed ?? '—') + '</div></div>'
+    + '<div class="item"><div class="k">问题数</div><div class="v">' + esc(summary.comments ?? comments.length) + '</div></div>'
+    + '<div class="item"><div class="k">Token</div><div class="v">' + esc(summary.total_tokens ?? '—') + '</div></div>'
+    + '<div class="item"><div class="k">耗时</div><div class="v">' + esc(summary.elapsed ?? (data.elapsed + 's')) + '</div></div>'
+    + '</div>';
+
+  const commentsHtml = comments.map((c, index) => {
+    const sev = String(c.severity || 'unknown').toLowerCase();
+    const start = c.start_line || 0;
+    const end = c.end_line || start;
+    const where = (c.path || '—') + (start ? ':' + start + (end && end !== start ? '-' + end : '') : '');
+    const body = window.DSH_MD ? window.DSH_MD.toHtml(c.content || '') : '<p>' + esc(c.content) + '</p>';
+    return '<div class="comment"><div class="comment-head">'
+      + '<span class="sev ' + esc(sev) + '">' + esc(c.severity || 'unknown') + '</span>'
+      + '<span class="path">' + esc(where) + '</span>'
+      + '<span class="pill">' + esc(c.category || 'general') + '</span></div>'
+      + '<div class="comment-body">' + body + '</div>'
+      + (c.existing_code ? '<div class="code">' + esc(c.existing_code) + '</div>' : '')
+      + (c.suggestion_code ? '<div class="code">' + esc(c.suggestion_code) + '</div>' : '')
+      + '</div>';
+  }).join('');
+  const warnings = data.warnings || [];
+  const warningHtml = warnings.length
+    ? '<div class="err" style="margin-bottom:12px"><b>运行警告</b><br />'
+      + warnings.map((w) => esc((w.file || '全局') + '：' + (w.message || ''))).join('<br />')
+      + '</div>'
+    : '';
+
+  const projectSummary = data.project_summary
+    ? '<div class="prose">' + (window.DSH_MD ? window.DSH_MD.toHtml(data.project_summary) : esc(data.project_summary)) + '</div>'
+    : '';
+
+  $('rvReportCard').innerHTML = '<div class="report-head"><div>'
+    + '<h2>审查报告</h2>'
+    + '<div class="hint">' + esc(data.project) + ' · ' + esc(data.mode_name || '') + ' · ' + esc(data.model || '') + '</div>'
+    + '</div><div class="actions">'
+    + '<a href="' + esc(data.report_url) + '" target="_blank" rel="noreferrer">下载 Markdown</a>'
+    + '<a href="' + esc(data.json_url) + '" target="_blank" rel="noreferrer">JSON</a>'
+    + '</div></div>'
+    + summaryHtml
+    + warningHtml
+    + (projectSummary ? '<h3 style="font-size:14px;margin:13px 0 4px">项目总结</h3>' + projectSummary : '')
+    + '<h3 style="font-size:14px;margin:13px 0 4px">问题明细</h3>'
+    + (commentsHtml || '<div class="hint">'
+      + (warnings.length ? '本次没有生成有效评论，原因见上方运行警告。' : '没有发现问题。')
+      + '</div>');
+}
+
+async function runReview() {
+  if (state.running) return;
+  const project = $('rvProject').value.trim();
+  if (!project) { setMessage('<div class="err">请填写项目目录。</div>'); return; }
+  state.running = true;
+  $('rvRun').disabled = true;
+  $('rvRun').textContent = '正在审查，可能需要几分钟…';
+  setMessage('<div class="loading">OCR 正在扫描/审查并调用模型，请耐心等待；不要关闭页面。</div>');
+  try {
+    const data = await api('/api/review/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project,
+        mode: $('rvMode').value,
+        paths: $('rvPaths').value.trim(),
+        exclude: $('rvExclude').value.trim(),
+        max_tokens: Number($('rvMaxTokens').value) || 0
+      })
+    });
+    setMessage('');
+    renderReport(data);
+    $('rvReportCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) {
+    setMessage('<div class="err">' + esc(err.message) + '</div>');
+  } finally {
+    state.running = false;
+    $('rvRun').disabled = false;
+    $('rvRun').textContent = '开始审查并生成报告';
+  }
+}
+
+$('rvRun').addEventListener('click', runReview);
+$('rvMode').addEventListener('change', () => {
+  $('scanFields').style.display = $('rvMode').value === 'scan' ? 'block' : 'none';
+});
+loadInfo();
+</script>
+</body>
+</html>

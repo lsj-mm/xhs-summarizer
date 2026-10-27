@@ -149,6 +149,14 @@ def main() -> int:
           and default_view["effective"]["api_key_set"]
           and "api_key" not in default_view,
           "工具箱默认模型视图可读且不泄露 key")
+    masked_cfg = learning.config_mod.deep_merge(
+        learning.config_mod.DEFAULTS,
+        {"learning": {"provider": "custom", "api_key": "secret-learning-key"}},
+    )
+    masked = learning.config_mod.masked_view(masked_cfg)
+    check(masked["learning"]["api_key"] == ""
+          and masked["learning"]["api_key_set"],
+          "配置视图会掩码 learning.api_key")
 
     failed_count = 0
     for ok, label in results:

@@ -419,6 +419,12 @@ def masked_view(config: dict) -> dict:
         github["token_set"] = bool(token)
         github["env_token_set"] = bool(_env_key("GITHUB_TOKEN"))
         github["token"] = ""
+    learning = view.get("learning")
+    if isinstance(learning, dict):
+        key = learning.get("api_key") or ""
+        learning["api_key_masked"] = mask_key(key)
+        learning["api_key_set"] = bool(key)
+        learning["api_key"] = ""
     pron = view.get("pronunciation")
     if isinstance(pron, dict):
         azure = pron.get("azure")
@@ -451,7 +457,8 @@ def apply_update(config: dict, patch: dict) -> dict:
 
     密钥字段（api_key / token）留空表示「不修改」，否则界面上的掩码会被当成新值写回去。
     """
-    secret_fields = {"asr": "api_key", "summarizer": "api_key", "github": "token"}
+    secret_fields = {"asr": "api_key", "summarizer": "api_key",
+                     "learning": "api_key", "github": "token"}
     incoming = copy.deepcopy(patch or {})
     for section, field in secret_fields.items():
         if not isinstance(incoming.get(section), dict):

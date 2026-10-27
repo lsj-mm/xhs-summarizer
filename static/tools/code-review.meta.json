@@ -1,0 +1,6 @@
+{
+  "name": "代码审查",
+  "description": "用 OpenCodeReview + 默认大模型审查本地项目，生成问题清单和 Markdown 报告",
+  "icon": "🔍",
+  "order": 70
+}

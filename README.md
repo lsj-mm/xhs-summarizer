@@ -11,6 +11,7 @@
 | 🔎 多语言关键字 | Python / C++ / Java / 前端 / MySQL / Go 关键字速查，含 AI 补充解释与真实 GitHub API 示例 |
 | 🎲 彩票模拟摇号 | 大乐透 / 双色球 / 快乐8：官方历史数据、走势统计、单式/复式/胆拖模拟；内置竞彩足球参考，仅供娱乐 |
 | 🎓 学习路径与考核 | 按主题和目标生成阶段路径、资源入口和阶段考核，严格执行 3 次机会、80 分通过、不过重学 |
+| 🔍 代码审查 | 接入 OpenCodeReview，对本地项目做全量扫描/Git 变更审查，生成行级问题与 Markdown 报告 |
 
 「税率计算」的五个标签页也可以用地址直接打开，例如 `#/salary`、`#/mortgage`、`#/prepay`、`#/carloan`、`#/vat`。
 
@@ -265,6 +266,30 @@ $env:XUNFEI_API_SECRET="你的 APISecret"
 
 ---
 
+## 代码审查（OpenCodeReview）
+
+把阿里开源的 [OpenCodeReview](https://github.com/alibaba/open-code-review) 接进工具箱，对本地项目做代码审查并生成 Markdown 报告。
+
+- **两种模式**：`scan` 全量扫描不需要 Git diff；`review` 审查当前未提交/暂存的 Git 变更。
+- **模型**：使用首页「⚙ 默认模型设置」的模型（当前 DeepSeek / deepseek-chat）。
+- **报告**：JSON 原始结果 + Markdown 报告，保存到 `work/codereview/`；页面可在线查看、下载 Markdown 和 JSON。
+- **CLI**：也可以直接跑
+  ```powershell
+  python tools/review_project.py --project E:\path\to\project
+  ```
+- **OCR 二进制**：默认找 `_vendor/ocr/ocr.exe`，也支持环境变量 `OCR_BIN`。
+  当前本机已放入 v1.13.3；它约 58 MB，不提交 Git。换电脑时从
+  [Releases](https://github.com/alibaba/open-code-review/releases) 下载 Windows amd64 版放到该路径，
+  或运行 OCR 仓库里的 `install.ps1`。
+- **注意**：代码会被发送给默认模型服务；AI 审查可能误报/漏报，报告不替代人工评审。
+- **token 预算**：默认 0（不限）；如果设得太低，OCR 会跳过文件并在报告里写运行警告。
+
+实现：`xhs/review.py`、`static/tools/code-review.html`；接口 `GET /api/review/info`、
+`POST /api/review/run`、`GET /api/review/report/{id}`、`GET /api/review/json/{id}`；
+离线测试 `python tools/check_review.py`。
+
+---
+
 ## 小红书视频转笔记
 
 粘贴一条小红书分享链接，工具会自动下载视频、把语音转成文字，然后**按内容类型**整理成 markdown：
@@ -448,7 +473,7 @@ python tools/selfcheck.py
 node tools/check_finance.js
 ```
 
-**验证状态**：离线自检 130 项、HTTP 接口层 12 项均通过。另外用一条真实公开笔记跑了完整链路
+**验证状态**：离线自检 134 项、HTTP 接口层 12 项均通过。另外用一条真实公开笔记跑了完整链路
 （短链跟跳转 → 下载 9.0 MB / 时长 02:34 → 标题、作者、正文、发布日期全部取对 → 提取出 4 个工具
 → 用**真实 GitHub 接口**核实链接 → 生成 md：REA、Ghidra 都正确匹配到仓库，另外两个老实写「未找到」）。
 转写与总结两步用的是本地假服务替身，未消耗任何额度；真实付费接口的表现取决于你的 key 与账户状态。
@@ -551,6 +576,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `lottery.py` | 彩票模拟：官方历史数据、走势统计、注数公式、模拟选号 |
 | `football.py` | 竞彩足球参考：500.com 赛程/赔率、比分/半全场/总进球 |
 | `learning.py` | 学习路径：AI 规划、阶段状态、判分、3 次机会与重学 |
+| `review.py` | OpenCodeReview 调用、JSON 解析和 Markdown 报告生成 |
 | `jobs.py` | 作业状态与事件总线（SSE 历史/增量） |
 | `pipeline.py` | 把解析、下载、转写、总结、落盘串成流水线 |
 | `sandbox.py` | 临时目录权限兼容补丁 |
@@ -572,6 +598,8 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `tools/lottery.meta.json` | 彩票模拟工具的列表元数据 |
 | `tools/learning.html` | 学习路径与考核：阶段计划、资源入口、答题和重学 |
 | `tools/learning.meta.json` | 学习路径工具的列表元数据 |
+| `tools/code-review.html` | 代码审查页面：项目路径、扫描模式、问题列表和报告下载 |
+| `tools/code-review.meta.json` | 代码审查工具的列表元数据 |
 | `tools/_shared/base.css` | 各工具共用的基础样式 |
 | `tools/_shared/finance.js` | 金融计算纯函数：个税、社保、摊还、提前还款、IRR |
 | `tools/_shared/loan-ui.js` | 房贷/车贷/提前还款共用的结果渲染 |
@@ -592,6 +620,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `check_lottery.py` | 彩票注数公式、号码范围与随机种子可复现性测试 |
 | `check_football.py` | 500.com 行解析、赔率概率、推荐结构与缺失数据处理测试 |
 | `check_learning.py` | 学习计划校验、判分、三次机会状态与答案不泄露测试 |
+| `check_review.py` | OCR 查找、模型映射、报告渲染和路径穿越测试 |
 
 ### 运行期目录（不纳入 Git）
 

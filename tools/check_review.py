@@ -1,0 +1,91 @@
+# -*- coding: utf-8 -*-
+"""代码审查工具的离线测试：不启动 OCR、不调用模型。
+
+    python tools/check_review.py
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(PROJECT_ROOT / "_vendor"))
+
+from xhs import review  # noqa: E402
+
+results: list[tuple[bool, str]] = []
+
+
+def check(ok: bool, label: str, detail: str = "") -> None:
+    results.append((ok, label + (f"  [{detail}]" if detail else "")))
+
+
+def main() -> int:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
+    ocr = review.find_ocr()
+    check(Path(ocr).is_file(), "能找到 ocr.exe", ocr)
+    check(Path(ocr).stat().st_size > 10_000_000, "ocr.exe 文件完整",
+          f"{Path(ocr).stat().st_size // 1024 // 1024} MB")
+
+    cfg = {
+        "summarizer": {
+            "provider": "deepseek", "api_key": "sk-test",
+            "base_url": "https://api.deepseek.com", "model": "deepseek-chat",
+        },
+        "learning": {"provider": "inherit"},
+    }
+    model = review._review_model(cfg)
+    check(model["ocr_url"] == "https://api.deepseek.com/v1",
+          "DeepSeek Base URL 自动补 /v1", model["ocr_url"])
+    check(model["model"] == "deepseek-chat" and model["api_key"] == "sk-test",
+          "审查使用默认模型和 key")
+
+    data = {
+        "status": "success",
+        "summary": {"files_reviewed": 1, "comments": 1, "total_tokens": 100, "elapsed": "2s"},
+        "comments": [{
+            "path": "xhs/config.py", "start_line": 10, "end_line": 11,
+            "severity": "high", "category": "security",
+            "content": "不要在这里泄露 key。", "existing_code": "key = 'x'",
+            "suggestion_code": "key = ''",
+        }],
+        "project_summary": "## Top Issues\n\n- 一个示例问题",
+        "session_id": "s1",
+    }
+    md = review._render_markdown(data, {
+        "project": "demo", "mode_name": "全量扫描",
+        "model": "DeepSeek / deepseek-chat", "created_at": "2026-01-01",
+    })
+    check("# 代码审查报告" in md and "xhs/config.py:10-11" in md, "报告包含标题和行号")
+    check("不要在这里泄露 key" in md and "建议代码" in md, "报告包含问题和建议")
+    check("项目总结" in md and "Top Issues" in md, "报告包含项目总结")
+
+    empty = {**data, "comments": [], "summary": {"files_reviewed": 1, "comments": 0}}
+    md2 = review._render_markdown(empty, {
+        "project": "demo", "mode_name": "全量扫描",
+        "model": "m", "created_at": "now",
+    })
+    check("未发现明显问题" in md2, "无问题报告有明确说明")
+
+    try:
+        review.report_json_path("../etc/passwd")
+        check(False, "报告 id 路径穿越应被拒绝")
+    except review.ReviewError:
+        check(True, "报告 id 路径穿越被拒绝")
+
+    failed = 0
+    for ok, label in results:
+        print(("  ✓ " if ok else "  ✗ ") + label)
+        failed += 0 if ok else 1
+    print(f"\n  通过 {len(results) - failed}/{len(results)} 项")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

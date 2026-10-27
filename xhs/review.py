@@ -1,0 +1,288 @@
+# -*- coding: utf-8 -*-
+"""代码审查：把阿里的 OpenCodeReview CLI 接进工具箱。
+
+边界：
+    - OCR 二进制默认从 _vendor/ocr/ocr.exe 查找，也可用 OCR_BIN 指定；
+    - 使用工具箱当前默认模型（DeepSeek / 自定义 OpenAI 兼容）；
+    - 只做本地项目审查，报告写到 work/codereview/；
+    - AI 审查有误报/漏报，报告只作参考，不替代人工评审。
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+import json
+import logging
+import os
+import re
+import secrets
+import shutil
+import subprocess
+from pathlib import Path
+
+from . import config as config_mod
+
+LOG = logging.getLogger(__name__)
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+class ReviewError(RuntimeError):
+    """可直接展示给用户的错误。"""
+
+
+def find_ocr() -> str:
+    env = (os.environ.get("OCR_BIN") or "").strip()
+    candidates = [
+        Path(env) if env else None,
+        config_mod.PROJECT_ROOT / "_vendor" / "ocr" / "ocr.exe",
+        config_mod.PROJECT_ROOT / "ocr" / "ocr.exe",
+        config_mod.PROJECT_ROOT.parent / "open-code-review-main" / "bin" / "ocr.exe",
+    ]
+    for candidate in candidates:
+        if candidate and candidate.is_file():
+            return str(candidate)
+    found = shutil.which("ocr")
+    if found:
+        return found
+    raise ReviewError(
+        "没有找到 ocr.exe。请把 OpenCodeReview 的 Windows 版放到 "
+        "_vendor/ocr/ocr.exe，或设置环境变量 OCR_BIN 指向它。"
+    )
+
+
+def _review_model(config: dict) -> dict:
+    try:
+        cfg = config_mod.effective_summarizer(config)
+    except RuntimeError as exc:
+        raise ReviewError(str(exc)) from exc
+    if not cfg.get("api_key"):
+        raise ReviewError("还没有配置默认模型 API key，请先在首页「默认模型设置」里填写")
+    url = (cfg.get("base_url") or "").rstrip("/")
+    for suffix in ("/chat/completions", "/v1/chat/completions"):
+        if url.endswith(suffix):
+            url = url[: -len(suffix)]
+            break
+    if cfg.get("provider") == "deepseek" and not url.endswith("/v1"):
+        url += "/v1"
+    if not url:
+        raise ReviewError("默认模型的 Base URL 为空")
+    return {**cfg, "ocr_url": url}
+
+
+def _report_id() -> str:
+    return dt.datetime.now().strftime("%Y%m%d%H%M%S") + "-" + secrets.token_hex(3)
+
+
+def _report_dir(config: dict) -> Path:
+    path = config_mod.workdir(config) / "codereview"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _render_markdown(data: dict, meta: dict) -> str:
+    summary = data.get("summary") or {}
+    comments = data.get("comments") or []
+    warnings = data.get("warnings") or []
+    lines = [
+        "# 代码审查报告",
+        "",
+        f"- 项目：`{meta['project']}`",
+        f"- 模式：{meta['mode_name']}",
+        f"- 模型：{meta['model']}",
+        f"- 生成时间：{meta['created_at']}",
+        f"- 状态：{data.get('status') or 'unknown'}",
+        f"- 会话：`{data.get('session_id') or '—'}`",
+        "",
+        "## 概览",
+        "",
+        "| 指标 | 值 |",
+        "|---|---|",
+        f"| 审查文件 | {summary.get('files_reviewed', '—')} |",
+        f"| 问题数 | {summary.get('comments', len(comments))} |",
+        f"| Token | {summary.get('total_tokens', '—')} |",
+        f"| 耗时 | {summary.get('elapsed', '—')} |",
+        "",
+    ]
+    if warnings:
+        lines += ["## 运行警告", ""]
+        for warning in warnings:
+            where = warning.get("file") or "全局"
+            lines.append(f"- `{where}`：{warning.get('message') or warning}")
+        lines.append("")
+    project_summary = (data.get("project_summary") or "").strip()
+    if project_summary:
+        lines += ["## 项目总结", "", project_summary, ""]
+    lines += ["## 问题明细", ""]
+    if not comments:
+        if warnings:
+            lines += ["本次没有生成有效评论，原因见上方运行警告。", ""]
+        else:
+            lines += ["未发现明显问题。", ""]
+    else:
+        for index, comment in enumerate(comments, 1):
+            severity = comment.get("severity") or "unknown"
+            category = comment.get("category") or "general"
+            path = comment.get("path") or "—"
+            start = comment.get("start_line") or 0
+            end = comment.get("end_line") or start
+            where = f"{path}:{start}" + (f"-{end}" if end and end != start else "")
+            lines += [
+                f"### {index}. [{severity}] {where}",
+                "",
+                f"- 类别：{category}",
+                "",
+                str(comment.get("content") or "").strip(),
+                "",
+            ]
+            existing = str(comment.get("existing_code") or "").strip()
+            suggestion = str(comment.get("suggestion_code") or "").strip()
+            if existing:
+                lines += ["**现有代码**", "", "```text", existing, "```", ""]
+            if suggestion:
+                lines += ["**建议代码**", "", "```text", suggestion, "```", ""]
+    lines += [
+        "---",
+        "",
+        "> 本报告由 OpenCodeReview + AI 模型自动生成，可能存在误报或漏报，仅供代码审查参考，不替代人工评审。",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def info(config: dict | None = None) -> dict:
+    config = config or config_mod.load()
+    try:
+        ocr = find_ocr()
+        ocr_error = ""
+    except ReviewError as exc:
+        ocr = ""
+        ocr_error = str(exc)
+    try:
+        model = _review_model(config)
+        model_label = f"{model.get('label')} / {model.get('model')}"
+    except ReviewError as exc:
+        model_label = ""
+        ocr_error = ocr_error or str(exc)
+    return {
+        "ocr": ocr,
+        "ocr_error": ocr_error,
+        "model": model_label,
+        "default_project": str(PROJECT_ROOT),
+        "modes": [{"value": "scan", "label": "全量扫描"}, {"value": "review", "label": "Git 变更审查"}],
+    }
+
+
+def run(project: str, mode: str = "scan", paths: str = "", exclude: str = "",
+        max_tokens: int = 0, config: dict | None = None) -> dict:
+    config = config or config_mod.load()
+    mode = "review" if mode == "review" else "scan"
+    project_path = Path(project or str(PROJECT_ROOT)).expanduser().resolve()
+    if not project_path.is_dir():
+        raise ReviewError(f"项目目录不存在：{project_path}")
+    if mode == "review":
+        git_check = subprocess.run(
+            ["git", "-C", str(project_path), "rev-parse", "--is-inside-work-tree"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+        )
+        if git_check.returncode != 0:
+            raise ReviewError("Git 变更审查需要目标目录是 Git 仓库")
+
+    ocr = find_ocr()
+    model = _review_model(config)
+    report_id = _report_id()
+    report_dir = _report_dir(config)
+    json_path = report_dir / f"{report_id}.json"
+    md_path = report_dir / f"{report_id}.md"
+
+    args = [
+        ocr, mode, "--repo", str(project_path),
+        "--format", "json", "--output", str(json_path),
+        "--timeout", "15", "--concurrency", "4", "--color", "never",
+    ]
+    if mode == "scan":
+        if paths.strip():
+            args += ["--path", paths.strip()]
+        if exclude.strip():
+            args += ["--exclude", exclude.strip()]
+        if int(max_tokens or 0) > 0:
+            args += ["--max-tokens-budget", str(int(max_tokens))]
+
+    env = os.environ.copy()
+    env.update({
+        "OCR_LLM_URL": model["ocr_url"],
+        "OCR_LLM_TOKEN": model.get("api_key") or "",
+        "OCR_LLM_MODEL": model.get("model") or "",
+        "OCR_LLM_PROTOCOL": "openai",
+        "OCR_USE_ANTHROPIC": "false",
+        "OCR_LLM_TIMEOUT": "300",
+    })
+    created_at = dt.datetime.now().astimezone().isoformat(timespec="seconds")
+    started = dt.datetime.now()
+    try:
+        proc = subprocess.run(
+            args, cwd=str(project_path), env=env,
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=16 * 60,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ReviewError("代码审查超过 16 分钟，已停止；可以先用 --path 缩小范围") from exc
+    except OSError as exc:
+        raise ReviewError(f"启动 ocr 失败：{exc}") from exc
+
+    if proc.returncode != 0:
+        tail = ((proc.stderr or "") + "\n" + (proc.stdout or ""))[-1800:]
+        raise ReviewError(f"OCR 审查失败（退出码 {proc.returncode}）：{tail.strip()}")
+    if not json_path.is_file():
+        raise ReviewError("OCR 没有生成 JSON 报告，请检查运行日志")
+
+    try:
+        data = json.loads(json_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ReviewError(f"OCR 报告解析失败：{exc}") from exc
+
+    meta = {
+        "project": str(project_path),
+        "mode_name": "Git 变更审查" if mode == "review" else "全量扫描",
+        "model": f"{model.get('label')} / {model.get('model')}",
+        "created_at": created_at,
+    }
+    markdown = _render_markdown(data, meta)
+    md_path.write_text(markdown, encoding="utf-8")
+    elapsed = (dt.datetime.now() - started).total_seconds()
+    return {
+        "id": report_id,
+        "project": str(project_path),
+        "mode": mode,
+        "mode_name": meta["mode_name"],
+        "model": meta["model"],
+        "created_at": created_at,
+        "elapsed": round(elapsed, 1),
+        "summary": data.get("summary") or {},
+        "comments": data.get("comments") or [],
+        "warnings": data.get("warnings") or [],
+        "status": data.get("status") or "",
+        "project_summary": data.get("project_summary") or "",
+        "session_id": data.get("session_id") or "",
+        "markdown": markdown,
+        "report_url": f"/api/review/report/{report_id}",
+        "json_url": f"/api/review/json/{report_id}",
+    }
+
+
+def read_report(report_id: str) -> str:
+    if not re.fullmatch(r"[0-9A-Za-z_-]+", report_id or ""):
+        raise ReviewError("报告 id 不合法")
+    path = _report_dir(config_mod.load()) / f"{report_id}.md"
+    if not path.is_file():
+        raise ReviewError("找不到这份审查报告")
+    return path.read_text(encoding="utf-8")
+
+
+def report_json_path(report_id: str) -> Path:
+    if not re.fullmatch(r"[0-9A-Za-z_-]+", report_id or ""):
+        raise ReviewError("报告 id 不合法")
+    path = _report_dir(config_mod.load()) / f"{report_id}.json"
+    if not path.is_file():
+        raise ReviewError("找不到这份审查报告")
+    return path

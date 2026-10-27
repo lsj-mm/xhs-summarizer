@@ -653,10 +653,11 @@ def main() -> int:
     import app as app_mod  # noqa: PLC0415  导入即构建应用，离线不影响
 
     tool_list = app_mod.discover_tools()
-    check(len(tool_list) >= 6, "扫描到至少六个工具",
+    check(len(tool_list) >= 7, "扫描到至少七个工具",
           "、".join(f"{t['icon']}{t['name']}" for t in tool_list))
-    check([t["id"] for t in tool_list] == ["notes", "tax-calc", "english", "keywords", "lottery", "learning"],
-          "按 order 排序（笔记、税率、英语、关键字、彩票、学习）",
+    check([t["id"] for t in tool_list] == ["notes", "tax-calc", "english", "keywords",
+                                           "lottery", "learning", "code-review"],
+          "按 order 排序（笔记、税率、英语、关键字、彩票、学习、代码审查）",
           "、".join(t["id"] for t in tool_list))
     check(all((app_mod.TOOLS_DIR / f"{t['id']}.html").is_file() for t in tool_list),
           "每个工具都有对应的页面文件")
@@ -798,6 +799,16 @@ def main() -> int:
     index_html = (PROJECT_ROOT / "static" / "index.html").read_text(encoding="utf-8")
     check("btnModelSettings" in index_html and "/api/model/settings" in index_html,
           "工具箱首页有默认模型设置入口")
+
+    review_html = (app_mod.TOOLS_DIR / "code-review.html").read_text(encoding="utf-8")
+    check("代码审查" in review_html and "/api/review/run" in review_html,
+          "代码审查页已接入 /api/review/run")
+    check((PROJECT_ROOT / "xhs" / "review.py").is_file(),
+          "OpenCodeReview 调用与报告生成在 xhs/review.py")
+    check((PROJECT_ROOT / "tools" / "check_review.py").is_file(),
+          "代码审查工具有离线测试")
+    check((app_mod.TOOLS_DIR / "code-review.meta.json").is_file(),
+          "代码审查工具有 meta.json")
 
     file_server.shutdown()
     stub_server.shutdown()
