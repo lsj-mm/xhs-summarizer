@@ -112,10 +112,9 @@
       <label for="rvProject">项目目录 / 单个文件</label>
       <div class="path-row">
         <input id="rvProject" placeholder="例如：E:\AISoft\xhs-summarizer" />
-        <button class="ghost" id="rvPickDir" type="button">选择文件夹</button>
-        <button class="ghost" id="rvPickFile" type="button">选择文件</button>
+        <button class="ghost" id="rvPickDir" type="button">📁 选择文件夹</button>
       </div>
-      <div class="hint" style="margin-top:5px">可以直接粘贴路径，也可以用系统选择框选文件夹或单个文件；单文件会自动使用全量扫描。</div>
+      <div class="hint" style="margin-top:5px">可以直接粘贴路径，也可以用系统选择框选文件夹；单个文件也可以把完整路径粘贴进来。</div>
     </div>
     <div class="row2">
       <div class="field">
@@ -329,8 +328,8 @@ function renderReport(data) {
       + '</div>');
 }
 
-async function pickPath(kind) {
-  const button = kind === 'file' ? $('rvPickFile') : $('rvPickDir');
+async function pickPath() {
+  const button = $('rvPickDir');
   const old = button.textContent;
   button.disabled = true;
   button.textContent = '选择中…';
@@ -338,18 +337,11 @@ async function pickPath(kind) {
     const data = await api('/api/review/pick', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind })
+      body: JSON.stringify({ kind: 'dir' })
     });
     if (data.cancelled || !data.path) return;
     $('rvProject').value = data.path;
-    if (kind === 'file') {
-      $('rvMode').value = 'scan';
-      $('scanFields').style.display = 'block';
-      $('rvPaths').value = '';
-      setMessage('<div class="loading">已选择单个文件，将使用全量扫描。</div>');
-    } else {
-      setMessage('');
-    }
+    setMessage('');
   } catch (err) {
     setMessage('<div class="err">' + esc(err.message) + '</div>');
   } finally {
@@ -391,8 +383,7 @@ async function runReview() {
 }
 
 $('rvRun').addEventListener('click', runReview);
-$('rvPickDir').addEventListener('click', () => pickPath('dir'));
-$('rvPickFile').addEventListener('click', () => pickPath('file'));
+$('rvPickDir').addEventListener('click', pickPath);
 $('rvMode').addEventListener('change', () => {
   $('scanFields').style.display = $('rvMode').value === 'scan' ? 'block' : 'none';
 });

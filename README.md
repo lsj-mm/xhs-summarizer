@@ -291,7 +291,7 @@ $env:XUNFEI_API_SECRET="你的 APISecret"
 把阿里开源的 [OpenCodeReview](https://github.com/alibaba/open-code-review) 接进工具箱，对本地项目做代码审查并生成 Markdown 报告。
 
 - **两种模式**：`scan` 全量扫描不需要 Git diff；`review` 审查当前未提交/暂存的 Git 变更。
-- **路径选择**：支持直接粘贴路径，也可以用系统选择框选文件夹或单个文件；单文件自动走全量扫描。
+- **路径选择**：支持直接粘贴路径（文件夹或单个文件），也可以点「📁 选择文件夹」用系统选择框选目录；单文件会自动走全量扫描。
 - **模型**：工具内可单独选「跟随工具箱 / DeepSeek / 自定义 OpenAI 兼容 / 本地模型」；
   没单独设置时使用首页「⚙ 默认模型设置」。
 - **报告**：JSON 原始结果 + Markdown 报告，保存到 `work/codereview/`；页面可在线查看、下载 Markdown 和 JSON。
