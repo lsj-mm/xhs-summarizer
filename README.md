@@ -291,6 +291,7 @@ $env:XUNFEI_API_SECRET="你的 APISecret"
 把阿里开源的 [OpenCodeReview](https://github.com/alibaba/open-code-review) 接进工具箱，对本地项目做代码审查并生成 Markdown 报告。
 
 - **两种模式**：`scan` 全量扫描不需要 Git diff；`review` 审查当前未提交/暂存的 Git 变更。
+- **路径选择**：支持直接粘贴路径，也可以用系统选择框选文件夹或单个文件；单文件自动走全量扫描。
 - **模型**：工具内可单独选「跟随工具箱 / DeepSeek / 自定义 OpenAI 兼容 / 本地模型」；
   没单独设置时使用首页「⚙ 默认模型设置」。
 - **报告**：JSON 原始结果 + Markdown 报告，保存到 `work/codereview/`；页面可在线查看、下载 Markdown 和 JSON。
@@ -494,7 +495,7 @@ python tools/selfcheck.py
 node tools/check_finance.js
 ```
 
-**验证状态**：离线自检 135 项、HTTP 接口层 12 项均通过。另外用一条真实公开笔记跑了完整链路
+**验证状态**：离线自检 136 项、HTTP 接口层 12 项均通过。另外用一条真实公开笔记跑了完整链路
 （短链跟跳转 → 下载 9.0 MB / 时长 02:34 → 标题、作者、正文、发布日期全部取对 → 提取出 4 个工具
 → 用**真实 GitHub 接口**核实链接 → 生成 md：REA、Ghidra 都正确匹配到仓库，另外两个老实写「未找到」）。
 转写与总结两步用的是本地假服务替身，未消耗任何额度；真实付费接口的表现取决于你的 key 与账户状态。

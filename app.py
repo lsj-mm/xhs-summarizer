@@ -493,6 +493,19 @@ async def review_settings() -> dict:
         review_mod.settings_view, config_mod.load())}
 
 
+@app.post("/api/review/pick")
+async def review_pick(payload: dict | None = None) -> dict:
+    kind = str((payload or {}).get("kind") or "dir")
+    try:
+        result = await asyncio.to_thread(review_mod.pick_path, kind)
+        return {"ok": True, **result}
+    except review_mod.ReviewError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("打开路径选择框失败")
+        raise HTTPException(status_code=502, detail=f"打开选择框失败：{exc}") from exc
+
+
 @app.post("/api/review/settings")
 async def review_save_settings(payload: dict) -> dict:
     try:

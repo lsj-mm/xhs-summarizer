@@ -74,6 +74,69 @@ def _report_id() -> str:
     return dt.datetime.now().strftime("%Y%m%d%H%M%S") + "-" + secrets.token_hex(3)
 
 
+def _target(project: str):
+    """目录 → (repo_root, path_filter)；单文件 → (父目录, 文件名)。"""
+    target = Path(project or str(PROJECT_ROOT)).expanduser().resolve()
+    if target.is_dir():
+        return target, target, ""
+    if target.is_file():
+        return target, target.parent, target.name
+    raise ReviewError(f"项目路径不存在：{target}")
+
+
+def pick_path(kind: str = "dir") -> dict:
+    """弹出 Windows 原生选择框，返回绝对路径。"""
+    if os.name != "nt":
+        raise ReviewError("原生文件夹选择只支持 Windows；其它平台请直接粘贴路径")
+    kind = "file" if kind == "file" else "dir"
+    if kind == "dir":
+        body = r"""
+Add-Type -AssemblyName System.Windows.Forms
+$d = New-Object System.Windows.Forms.FolderBrowserDialog
+$d.Description = '选择要审查的项目文件夹'
+$d.ShowNewFolderButton = $false
+$owner = New-Object System.Windows.Forms.Form
+$owner.TopMost = $true
+$owner.ShowInTaskbar = $false
+$owner.WindowState = 'Minimized'
+$owner.Show()
+if ($d.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {
+  [Console]::Out.Write($d.SelectedPath)
+}
+$owner.Close()
+"""
+    else:
+        body = r"""
+Add-Type -AssemblyName System.Windows.Forms
+$d = New-Object System.Windows.Forms.OpenFileDialog
+$d.Title = '选择要审查的单个文件'
+$d.CheckFileExists = $true
+$d.Multiselect = $false
+$d.Filter = '所有文件|*.*'
+$owner = New-Object System.Windows.Forms.Form
+$owner.TopMost = $true
+$owner.ShowInTaskbar = $false
+$owner.WindowState = 'Minimized'
+$owner.Show()
+if ($d.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {
+  [Console]::Out.Write($d.FileName)
+}
+$owner.Close()
+"""
+    try:
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-STA", "-Command", body],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=180, creationflags=0x08000000,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ReviewError(f"打开选择框失败：{exc}") from exc
+    path = (proc.stdout or "").strip()
+    if proc.returncode != 0:
+        raise ReviewError(f"选择框异常：{(proc.stderr or '')[-300:]}")
+    return {"path": path, "cancelled": not bool(path), "kind": kind}
+
+
 def settings_view(config: dict | None = None) -> dict:
     config = config or config_mod.load()
     section = dict(config.get("codereview") or {})
@@ -232,12 +295,12 @@ def run(project: str, mode: str = "scan", paths: str = "", exclude: str = "",
         max_tokens: int = 0, config: dict | None = None) -> dict:
     config = config or config_mod.load()
     mode = "review" if mode == "review" else "scan"
-    project_path = Path(project or str(PROJECT_ROOT)).expanduser().resolve()
-    if not project_path.is_dir():
-        raise ReviewError(f"项目目录不存在：{project_path}")
+    project_path, repo_root, single_file = _target(project)
+    if single_file and mode == "review":
+        raise ReviewError("选择单个文件时请使用「全量扫描」")
     if mode == "review":
         git_check = subprocess.run(
-            ["git", "-C", str(project_path), "rev-parse", "--is-inside-work-tree"],
+            ["git", "-C", str(repo_root), "rev-parse", "--is-inside-work-tree"],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
         if git_check.returncode != 0:
@@ -251,13 +314,14 @@ def run(project: str, mode: str = "scan", paths: str = "", exclude: str = "",
     md_path = report_dir / f"{report_id}.md"
 
     args = [
-        ocr, mode, "--repo", str(project_path),
+        ocr, mode, "--repo", str(repo_root),
         "--format", "json", "--output", str(json_path),
         "--timeout", "15", "--concurrency", "4", "--color", "never",
     ]
     if mode == "scan":
-        if paths.strip():
-            args += ["--path", paths.strip()]
+        scan_paths = single_file or paths.strip()
+        if scan_paths:
+            args += ["--path", scan_paths]
         if exclude.strip():
             args += ["--exclude", exclude.strip()]
         if int(max_tokens or 0) > 0:
@@ -276,7 +340,7 @@ def run(project: str, mode: str = "scan", paths: str = "", exclude: str = "",
     started = dt.datetime.now()
     try:
         proc = subprocess.run(
-            args, cwd=str(project_path), env=env,
+            args, cwd=str(repo_root), env=env,
             capture_output=True, text=True, encoding="utf-8", errors="replace",
             timeout=16 * 60,
         )
@@ -298,7 +362,7 @@ def run(project: str, mode: str = "scan", paths: str = "", exclude: str = "",
 
     meta = {
         "project": str(project_path),
-        "mode_name": "Git 变更审查" if mode == "review" else "全量扫描",
+        "mode_name": "单文件扫描" if single_file else ("Git 变更审查" if mode == "review" else "全量扫描"),
         "model": f"{model.get('label')} / {model.get('model')}",
         "created_at": created_at,
     }

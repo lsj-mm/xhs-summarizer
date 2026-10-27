@@ -92,6 +92,10 @@ def main() -> int:
           "代码审查模型设置不泄露 key")
     check(any(item["value"] == "local" for item in view["options"]),
           "代码审查模型设置包含本地模型选项")
+    file_path = PROJECT_ROOT / "README.md"
+    target, repo_root, single = review._target(str(file_path))
+    check(target == file_path and repo_root == PROJECT_ROOT and single == "README.md",
+          "单文件路径会拆成父目录 + 文件名")
 
     failed = 0
     for ok, label in results:

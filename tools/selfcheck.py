@@ -811,6 +811,8 @@ def main() -> int:
           "代码审查工具有 meta.json")
     check("本地模型" in learning_html and "本地模型" in review_html,
           "学习路径和代码审查都支持本地模型选项")
+    check("rvPickDir" in review_html and "/api/review/pick" in review_html,
+          "代码审查页支持系统选择文件夹/文件")
 
     file_server.shutdown()
     stub_server.shutdown()

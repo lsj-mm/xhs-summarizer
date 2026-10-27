@@ -23,6 +23,9 @@
   .field textarea{min-height:64px;resize:vertical;line-height:1.6}
   .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
   .row2 > .field{min-width:0}
+  .path-row{display:flex;gap:8px;align-items:center}
+  .path-row input{flex:1;min-width:0}
+  .path-row .ghost{white-space:nowrap}
   button.primary{width:100%;font-family:inherit;font-size:13.5px;font-weight:600;padding:11px 16px;border-radius:9px;
     border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
   button.primary:hover{background:var(--accent-dark)}
@@ -106,8 +109,13 @@
   <div class="card">
     <div id="reviewInfo" class="hint">正在检查 OCR 和模型配置…</div>
     <div class="field" style="margin-top:10px">
-      <label for="rvProject">项目目录</label>
-      <input id="rvProject" placeholder="例如：E:\AISoft\xhs-summarizer" />
+      <label for="rvProject">项目目录 / 单个文件</label>
+      <div class="path-row">
+        <input id="rvProject" placeholder="例如：E:\AISoft\xhs-summarizer" />
+        <button class="ghost" id="rvPickDir" type="button">选择文件夹</button>
+        <button class="ghost" id="rvPickFile" type="button">选择文件</button>
+      </div>
+      <div class="hint" style="margin-top:5px">可以直接粘贴路径，也可以用系统选择框选文件夹或单个文件；单文件会自动使用全量扫描。</div>
     </div>
     <div class="row2">
       <div class="field">
@@ -321,6 +329,35 @@ function renderReport(data) {
       + '</div>');
 }
 
+async function pickPath(kind) {
+  const button = kind === 'file' ? $('rvPickFile') : $('rvPickDir');
+  const old = button.textContent;
+  button.disabled = true;
+  button.textContent = '选择中…';
+  try {
+    const data = await api('/api/review/pick', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind })
+    });
+    if (data.cancelled || !data.path) return;
+    $('rvProject').value = data.path;
+    if (kind === 'file') {
+      $('rvMode').value = 'scan';
+      $('scanFields').style.display = 'block';
+      $('rvPaths').value = '';
+      setMessage('<div class="loading">已选择单个文件，将使用全量扫描。</div>');
+    } else {
+      setMessage('');
+    }
+  } catch (err) {
+    setMessage('<div class="err">' + esc(err.message) + '</div>');
+  } finally {
+    button.disabled = false;
+    button.textContent = old;
+  }
+}
+
 async function runReview() {
   if (state.running) return;
   const project = $('rvProject').value.trim();
@@ -354,6 +391,8 @@ async function runReview() {
 }
 
 $('rvRun').addEventListener('click', runReview);
+$('rvPickDir').addEventListener('click', () => pickPath('dir'));
+$('rvPickFile').addEventListener('click', () => pickPath('file'));
 $('rvMode').addEventListener('change', () => {
   $('scanFields').style.display = $('rvMode').value === 'scan' ? 'block' : 'none';
 });
