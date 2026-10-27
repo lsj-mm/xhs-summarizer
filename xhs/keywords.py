@@ -57,7 +57,7 @@ def explain(keyword: str, lang: str = "all", config: dict | None = None) -> dict
 
     config = config or config_mod.load()
     cfg = config_mod.effective_summarizer(config)
-    if not cfg.get("api_key"):
+    if not cfg.get("api_key") and not cfg.get("key_optional"):
         raise KeywordError(
             "还没有配置总结模型 API key。请回到工具箱首页，点右上角「设置」填写后再试。"
         )

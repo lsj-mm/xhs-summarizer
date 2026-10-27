@@ -204,14 +204,15 @@ function renderModelFields(){
   const keyHint = settings.api_key_masked
     ? "已保存：" + settings.api_key_masked + "（留空保持）"
     : "填写 API key";
-  const baseField = provider === "custom"
+  const isCustomLike = provider === "custom" || provider === "local";
+  const baseField = isCustomLike
     ? `<div class="field"><label for="gmBase">Base URL</label>
-       <input id="gmBase" value="${escapeHtml(settings.base_url || "")}" placeholder="https://api.example.com/v1" /></div>`
+       <input id="gmBase" value="${escapeHtml(settings.base_url || "")}" placeholder="${provider === "local" ? "http://127.0.0.1:11434/v1" : "https://api.example.com/v1"}" /></div>`
     : "";
-  fields.innerHTML = `<div class="field"><label for="gmModel">模型名（可选）</label>
-    <input id="gmModel" value="${escapeHtml(settings.model || "")}" placeholder="留空用厂商默认模型" /></div>
+  fields.innerHTML = `<div class="field"><label for="gmModel">模型名${provider === "local" ? "（本地模型必填）" : "（可选）"}</label>
+    <input id="gmModel" value="${escapeHtml(settings.model || "")}" placeholder="${provider === "local" ? "例如 qwen2.5:7b" : "留空用厂商默认模型"}" /></div>
     ${baseField}
-    <div class="field"><label for="gmKey">API key（可选）</label>
+    <div class="field"><label for="gmKey">API key${provider === "local" ? "（本地模型可留空）" : "（可选）"}</label>
     <input id="gmKey" type="password" autocomplete="off" placeholder="${escapeHtml(keyHint)}" /></div>`;
 }
 

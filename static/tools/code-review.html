@@ -85,6 +85,25 @@
   </div>
 
   <div class="card">
+    <div class="report-head" style="margin-bottom:8px">
+      <div><h2>AI 模型</h2><div class="hint">不单独设置则跟随工具箱首页的默认模型。</div></div>
+      <span class="pill" id="crModelPill">跟随工具箱</span>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="crProvider">大模型厂商</label>
+        <select id="crProvider"></select>
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button class="ghost" id="crSaveModel" type="button" style="width:100%">保存模型设置</button>
+      </div>
+    </div>
+    <div id="crModelFields"></div>
+    <div class="hint" id="crModelStatus"></div>
+  </div>
+
+  <div class="card">
     <div id="reviewInfo" class="hint">正在检查 OCR 和模型配置…</div>
     <div class="field" style="margin-top:10px">
       <label for="rvProject">项目目录</label>
@@ -135,7 +154,7 @@
 'use strict';
 
 const $ = (id) => document.getElementById(id);
-const state = { info: null, report: null, running: false };
+const state = { info: null, report: null, modelSettings: null, running: false };
 
 function esc(text) {
   return String(text == null ? '' : text).replace(/[&<>"']/g, (ch) => ({
@@ -152,6 +171,84 @@ async function api(url, options) {
 }
 
 function setMessage(html) { $('rvMessage').innerHTML = html || ''; }
+
+function renderCrModelFields() {
+  const provider = $('crProvider').value;
+  const settings = state.modelSettings || {};
+  const fields = $('crModelFields');
+  if (provider === 'inherit') {
+    fields.innerHTML = '<p class="hint" style="margin:0 0 10px">使用工具箱首页「默认模型设置」里的模型。</p>';
+    return;
+  }
+  const keyHint = settings.api_key_masked
+    ? '已保存：' + settings.api_key_masked + '（留空保持）'
+    : (provider === 'local' ? '本地模型通常可留空' : '填写 API key');
+  const isCustomLike = provider === 'custom' || provider === 'local';
+  const baseField = isCustomLike
+    ? '<div class="field"><label for="crBase">Base URL</label>'
+      + '<input id="crBase" value="' + esc(settings.base_url || '') + '" placeholder="'
+      + (provider === 'local' ? 'http://127.0.0.1:11434/v1' : 'https://api.example.com/v1') + '" /></div>'
+    : '';
+  fields.innerHTML = '<div class="field"><label for="crModel">模型名'
+    + (provider === 'local' ? '（本地模型必填）' : '（可选）') + '</label>'
+    + '<input id="crModel" value="' + esc(settings.model || '') + '" placeholder="'
+    + (provider === 'local' ? '例如 qwen2.5:7b' : '留空用厂商默认模型') + '" /></div>'
+    + baseField
+    + '<div class="field"><label for="crKey">API key' + (provider === 'local' ? '（可留空）' : '（可选）') + '</label>'
+    + '<input id="crKey" type="password" autocomplete="off" placeholder="' + esc(keyHint) + '" /></div>';
+}
+
+function renderCrModelSettings() {
+  const settings = state.modelSettings;
+  if (!settings) return;
+  $('crProvider').innerHTML = (settings.options || []).map((item) =>
+    '<option value="' + esc(item.value) + '"' + (item.value === settings.provider ? ' selected' : '') + '>'
+    + esc(item.label) + '</option>'
+  ).join('');
+  renderCrModelFields();
+  const eff = settings.effective || {};
+  $('crModelPill').textContent = eff.label || '未配置';
+  $('crModelStatus').innerHTML = eff.error
+    ? '<span style="color:#a4261b">' + esc(eff.error) + '</span>'
+    : '当前审查模型：<b>' + esc(eff.label || '—') + ' / ' + esc(eff.model || '—') + '</b>';
+}
+
+async function loadCrModelSettings() {
+  try {
+    const data = await api('/api/review/settings');
+    state.modelSettings = data.settings;
+    renderCrModelSettings();
+  } catch (err) {
+    $('crModelStatus').innerHTML = '<span style="color:#a4261b">' + esc(err.message) + '</span>';
+  }
+}
+
+async function saveCrModelSettings() {
+  const payload = {
+    provider: $('crProvider').value,
+    model: $('crModel') ? $('crModel').value.trim() : '',
+    base_url: $('crBase') ? $('crBase').value.trim() : '',
+    api_key: $('crKey') ? $('crKey').value.trim() : ''
+  };
+  $('crSaveModel').disabled = true;
+  $('crSaveModel').textContent = '保存中…';
+  try {
+    const data = await api('/api/review/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    state.modelSettings = data.settings;
+    renderCrModelSettings();
+    $('crModelStatus').innerHTML += ' <span style="color:#0f7b3d">已保存。</span>';
+    await loadInfo();
+  } catch (err) {
+    $('crModelStatus').innerHTML = '<span style="color:#a4261b">' + esc(err.message) + '</span>';
+  } finally {
+    $('crSaveModel').disabled = false;
+    $('crSaveModel').textContent = '保存模型设置';
+  }
+}
 
 async function loadInfo() {
   try {
@@ -260,6 +357,9 @@ $('rvRun').addEventListener('click', runReview);
 $('rvMode').addEventListener('change', () => {
   $('scanFields').style.display = $('rvMode').value === 'scan' ? 'block' : 'none';
 });
+$('crProvider').addEventListener('change', renderCrModelFields);
+$('crSaveModel').addEventListener('click', saveCrModelSettings);
+loadCrModelSettings();
 loadInfo();
 </script>
 </body>

@@ -35,6 +35,12 @@
     "base_url": "",
     "model": ""
   },
+  "codereview": {
+    "provider": "inherit",
+    "api_key": "",
+    "base_url": "",
+    "model": ""
+  },
   "summary": {
     "include_transcript": true,
     "extra_instruction": ""

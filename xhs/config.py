@@ -74,6 +74,12 @@ DEFAULTS: dict = {
         "base_url": "",
         "model": "",
     },
+    "codereview": {
+        "provider": "inherit",
+        "api_key": "",
+        "base_url": "",
+        "model": "",
+    },
     "github": {
         # 给提取到的工具名匹配 GitHub 仓库。匹配不到就写「未找到」，绝不编造链接。
         "enabled": True,
@@ -165,6 +171,16 @@ SUMMARIZER_PRESETS: dict = {
         "key_url": "",
         "note": "硅基流动、通义、Ollama、One-API 等都填这里。",
     },
+    "local": {
+        "label": "本地模型（OpenAI 兼容）",
+        "protocol": "openai_chat",
+        "base_url": "http://127.0.0.1:11434/v1",
+        "model": "",
+        "key_env": "LOCAL_LLM_API_KEY",
+        "key_url": "",
+        "key_optional": True,
+        "note": "Ollama / LM Studio / vLLM 等本地 OpenAI 兼容服务；模型名必填，key 通常可留空。",
+    },
 }
 
 
@@ -248,6 +264,7 @@ def effective_summarizer(config: dict) -> dict:
         "temperature": float(section.get("temperature", 0.3)),
         "max_input_chars": int(section.get("max_input_chars") or 20000),
         "label": preset["label"],
+        "key_optional": bool(preset.get("key_optional")),
     }
     if not resolved["base_url"] or not resolved["model"]:
         raise RuntimeError(f"模型 {preset['label']} 需要自己填写 base_url 和 model")
@@ -286,6 +303,39 @@ def effective_learning_model(config: dict) -> dict:
         "temperature": float(global_section.get("temperature", 0.3)),
         "max_input_chars": int(global_section.get("max_input_chars") or 20000),
         "label": preset["label"],
+        "key_optional": bool(preset.get("key_optional")),
+    }
+
+
+def effective_review_model(config: dict) -> dict:
+    """代码审查工具使用的模型；默认跟随 summarizer，也可单独指定。"""
+    section = dict(config.get("codereview") or {})
+    provider = (section.get("provider") or "inherit").strip()
+    if provider in ("", "inherit"):
+        return effective_summarizer(config)
+    preset = SUMMARIZER_PRESETS.get(provider)
+    if preset is None:
+        raise RuntimeError(f"未知的代码审查模型厂商 {provider!r}")
+    global_section = dict(config.get("summarizer") or {})
+    global_provider = (global_section.get("provider") or "deepseek").strip()
+    key = (section.get("api_key") or "").strip()
+    if not key and provider == global_provider:
+        key = (global_section.get("api_key") or "").strip()
+    key = key or _env_key(preset["key_env"]) or _env_key("LLM_API_KEY")
+    base_url = (section.get("base_url") or preset["base_url"] or "").rstrip("/")
+    model = section.get("model") or preset["model"]
+    if not base_url or not model:
+        raise RuntimeError(f"模型 {preset['label']} 需要自己填写 base_url 和 model")
+    return {
+        "provider": provider,
+        "protocol": preset["protocol"],
+        "base_url": base_url,
+        "model": model,
+        "api_key": key,
+        "temperature": float(global_section.get("temperature", 0.3)),
+        "max_input_chars": int(global_section.get("max_input_chars") or 20000),
+        "label": preset["label"],
+        "key_optional": bool(preset.get("key_optional")),
     }
 
 
@@ -328,6 +378,8 @@ def save_default_model(payload: dict, config: dict) -> dict:
     model = str(payload.get("model") or "").strip()
     if provider == "custom" and (not base_url or not model):
         raise RuntimeError("自定义模型需要填写 Base URL 和模型名")
+    if provider == "local" and not model:
+        raise RuntimeError("本地模型需要填写模型名（例如 qwen2.5:7b）")
     section["provider"] = provider
     section["base_url"] = base_url
     section["model"] = model

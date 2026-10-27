@@ -79,6 +79,20 @@ def main() -> int:
     except review.ReviewError:
         check(True, "报告 id 路径穿越被拒绝")
 
+    local_cfg = {
+        "summarizer": {"provider": "deepseek", "api_key": "sk", "model": "deepseek-chat"},
+        "codereview": {"provider": "local", "model": "qwen2.5:7b",
+                       "base_url": "http://127.0.0.1:11434/v1"},
+    }
+    local = review._review_model(local_cfg)
+    check(local["key_optional"] and local["ocr_url"].startswith("http://127.0.0.1:11434"),
+          "代码审查可以单独选择本地模型")
+    view = review.settings_view(local_cfg)
+    check("api_key" not in view and view["effective"]["model"] == "qwen2.5:7b",
+          "代码审查模型设置不泄露 key")
+    check(any(item["value"] == "local" for item in view["options"]),
+          "代码审查模型设置包含本地模型选项")
+
     failed = 0
     for ok, label in results:
         print(("  ✓ " if ok else "  ✗ ") + label)

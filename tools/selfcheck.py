@@ -809,6 +809,8 @@ def main() -> int:
           "代码审查工具有离线测试")
     check((app_mod.TOOLS_DIR / "code-review.meta.json").is_file(),
           "代码审查工具有 meta.json")
+    check("本地模型" in learning_html and "本地模型" in review_html,
+          "学习路径和代码审查都支持本地模型选项")
 
     file_server.shutdown()
     stub_server.shutdown()

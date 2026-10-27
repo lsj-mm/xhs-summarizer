@@ -157,6 +157,15 @@ def main() -> int:
     check(masked["learning"]["api_key"] == ""
           and masked["learning"]["api_key_set"],
           "配置视图会掩码 learning.api_key")
+    local_cfg = learning.config_mod.deep_merge(
+        learning.config_mod.DEFAULTS,
+        {"summarizer": {"provider": "local", "model": "qwen2.5:7b",
+                        "base_url": "http://127.0.0.1:11434/v1"}},
+    )
+    local = learning.config_mod.effective_summarizer(local_cfg)
+    check(local["key_optional"] and local["api_key"] == ""
+          and local["model"] == "qwen2.5:7b",
+          "本地模型可以不带 API key")
 
     failed_count = 0
     for ok, label in results:

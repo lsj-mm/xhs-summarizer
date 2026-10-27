@@ -487,6 +487,25 @@ async def learning_reset(plan_id: str, stage_index: int) -> dict:
 
 # ------------------------------------------------------------------ 代码审查
 
+@app.get("/api/review/settings")
+async def review_settings() -> dict:
+    return {"ok": True, "settings": await asyncio.to_thread(
+        review_mod.settings_view, config_mod.load())}
+
+
+@app.post("/api/review/settings")
+async def review_save_settings(payload: dict) -> dict:
+    try:
+        settings = await asyncio.to_thread(
+            review_mod.save_settings, payload or {}, config_mod.load())
+        return {"ok": True, "settings": settings}
+    except review_mod.ReviewError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("保存代码审查模型设置失败")
+        raise HTTPException(status_code=502, detail=f"保存设置失败：{exc}") from exc
+
+
 @app.get("/api/review/info")
 async def review_info() -> dict:
     return {"ok": True, **await asyncio.to_thread(review_mod.info, config_mod.load())}

@@ -108,9 +108,15 @@ def save_settings(payload: dict, config: dict | None = None) -> dict:
         raise LearningError("未知的模型厂商")
     section = dict(config.get("learning") or {})
     old_provider = (section.get("provider") or "inherit").strip() or "inherit"
+    model = str(payload.get("model") or "").strip()
+    base_url = str(payload.get("base_url") or "").strip()
+    if provider == "custom" and (not model or not base_url):
+        raise LearningError("自定义模型需要填写 Base URL 和模型名")
+    if provider == "local" and not model:
+        raise LearningError("本地模型需要填写模型名，例如 qwen2.5:7b")
     section["provider"] = provider
-    section["base_url"] = str(payload.get("base_url") or "").strip()
-    section["model"] = str(payload.get("model") or "").strip()
+    section["base_url"] = base_url
+    section["model"] = model
     key = str(payload.get("api_key") or "").strip()
     if key:
         section["api_key"] = key
@@ -245,7 +251,7 @@ def generate_plan(topic: str, goal: str, current_level: str = "零基础",
         cfg = config_mod.effective_learning_model(config)
     except RuntimeError as exc:
         raise LearningError(str(exc)) from exc
-    if not cfg.get("api_key"):
+    if not cfg.get("api_key") and not cfg.get("key_optional"):
         raise LearningError("还没有配置总结模型 API key，请先在工具箱首页设置里填写")
 
     prompt = f"""请为下面的学习需求生成学习路径。
@@ -472,7 +478,7 @@ def generate_exam(plan_id: str, stage_index: int, config: dict | None = None) ->
         cfg = config_mod.effective_learning_model(config)
     except RuntimeError as exc:
         raise LearningError(str(exc)) from exc
-    if not cfg.get("api_key"):
+    if not cfg.get("api_key") and not cfg.get("key_optional"):
         raise LearningError("还没有配置总结模型 API key")
     try:
         raw = summarize_mod._chat(

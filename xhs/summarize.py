@@ -190,7 +190,9 @@ def _friendly_error(status: int, body: str, cfg: dict) -> str:
 
 def _chat(messages: list[dict], cfg: dict, json_mode: bool = False) -> str:
     url = f"{cfg['base_url']}/chat/completions"
-    headers = {"Authorization": f"Bearer {cfg['api_key']}", "Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json"}
+    if cfg.get("api_key"):
+        headers["Authorization"] = f"Bearer {cfg['api_key']}"
     payload: dict = {
         "model": cfg["model"],
         "messages": messages,
@@ -441,7 +443,7 @@ def summarize(meta: dict, transcript: dict, config: dict, emit=None) -> dict:
     from . import github as github_mod
 
     cfg = config_mod.effective_summarizer(config)
-    if not cfg.get("api_key"):
+    if not cfg.get("api_key") and not cfg.get("key_optional"):
         raise SummaryError(
             f"没有配置总结模型 API key（当前模型：{cfg['label']}）。"
             "请在网页「设置」里填写，或设置环境变量 DEEPSEEK_API_KEY。"
@@ -489,7 +491,7 @@ def summarize(meta: dict, transcript: dict, config: dict, emit=None) -> dict:
 
 def selftest(cfg: dict, emit=None) -> dict:
     """发一条极短的请求，验证 key、模型名、网络。"""
-    if not cfg.get("api_key"):
+    if not cfg.get("api_key") and not cfg.get("key_optional"):
         # 没有 key 就直接说清楚，不必白跑一次请求再被 401 顶回来
         raise SummaryError(
             f"还没有配置总结模型 API key（当前模型：{cfg.get('label')}）。"

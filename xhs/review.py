@@ -53,10 +53,10 @@ def find_ocr() -> str:
 
 def _review_model(config: dict) -> dict:
     try:
-        cfg = config_mod.effective_summarizer(config)
+        cfg = config_mod.effective_review_model(config)
     except RuntimeError as exc:
         raise ReviewError(str(exc)) from exc
-    if not cfg.get("api_key"):
+    if not cfg.get("api_key") and not cfg.get("key_optional"):
         raise ReviewError("还没有配置默认模型 API key，请先在首页「默认模型设置」里填写")
     url = (cfg.get("base_url") or "").rstrip("/")
     for suffix in ("/chat/completions", "/v1/chat/completions"):
@@ -72,6 +72,61 @@ def _review_model(config: dict) -> dict:
 
 def _report_id() -> str:
     return dt.datetime.now().strftime("%Y%m%d%H%M%S") + "-" + secrets.token_hex(3)
+
+
+def settings_view(config: dict | None = None) -> dict:
+    config = config or config_mod.load()
+    section = dict(config.get("codereview") or {})
+    provider = (section.get("provider") or "inherit").strip() or "inherit"
+    try:
+        effective = config_mod.effective_review_model(config)
+        effective_info = {
+            "label": effective.get("label", ""),
+            "model": effective.get("model", ""),
+            "base_url": effective.get("base_url", ""),
+            "api_key_set": bool(effective.get("api_key")) or bool(effective.get("key_optional")),
+        }
+    except Exception as exc:
+        effective_info = {"error": str(exc), "api_key_set": False}
+    options = [{"value": "inherit", "label": "跟随工具箱设置"}]
+    options += [{"value": name, "label": preset["label"]}
+                for name, preset in config_mod.SUMMARIZER_PRESETS.items()]
+    return {
+        "provider": provider,
+        "model": section.get("model") or "",
+        "base_url": section.get("base_url") or "",
+        "api_key_masked": config_mod.mask_key(section.get("api_key") or ""),
+        "api_key_set": bool(section.get("api_key")),
+        "effective": effective_info,
+        "options": options,
+    }
+
+
+def save_settings(payload: dict, config: dict | None = None) -> dict:
+    config = config or config_mod.load()
+    payload = payload or {}
+    provider = str(payload.get("provider") or "inherit").strip() or "inherit"
+    if provider not in ("inherit", *config_mod.SUMMARIZER_PRESETS.keys()):
+        raise ReviewError("未知的模型厂商")
+    base_url = str(payload.get("base_url") or "").strip()
+    model = str(payload.get("model") or "").strip()
+    if provider == "custom" and (not base_url or not model):
+        raise ReviewError("自定义模型需要填写 Base URL 和模型名")
+    if provider == "local" and not model:
+        raise ReviewError("本地模型需要填写模型名，例如 qwen2.5:7b")
+    section = dict(config.get("codereview") or {})
+    old_provider = (section.get("provider") or "inherit").strip() or "inherit"
+    section["provider"] = provider
+    section["base_url"] = base_url
+    section["model"] = model
+    key = str(payload.get("api_key") or "").strip()
+    if key:
+        section["api_key"] = key
+    elif provider != old_provider:
+        section["api_key"] = ""
+    config["codereview"] = section
+    config_mod.save(config)
+    return settings_view(config)
 
 
 def _report_dir(config: dict) -> Path:
@@ -211,7 +266,7 @@ def run(project: str, mode: str = "scan", paths: str = "", exclude: str = "",
     env = os.environ.copy()
     env.update({
         "OCR_LLM_URL": model["ocr_url"],
-        "OCR_LLM_TOKEN": model.get("api_key") or "",
+        "OCR_LLM_TOKEN": model.get("api_key") or ("local" if model.get("key_optional") else ""),
         "OCR_LLM_MODEL": model.get("model") or "",
         "OCR_LLM_PROTOCOL": "openai",
         "OCR_USE_ANTHROPIC": "false",
