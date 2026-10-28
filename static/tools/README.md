@@ -16,7 +16,7 @@
 | `lottery.meta.json` | 彩票模拟工具的列表元数据 |
 | `learning.html` | 学习路径与考核：阶段计划、模型厂商设置、资源入口、选择题判分、3 次机会与重学 |
 | `learning.meta.json` | 学习路径工具的列表元数据 |
-| `code-review.html` | 代码审查：项目路径、全量扫描/Git 变更、问题列表与报告下载 |
+| `code-review.html` | 代码审查：项目路径、快速/全量扫描、模型设置、人工核查提示与报告下载 |
 | `code-review.meta.json` | 代码审查工具的列表元数据 |
 | `_shared/base.css` | 各工具共用的基础样式、变量和卡片布局 |
 | `_shared/finance.js` | 金融计算纯函数：个税、社保、摊还、提前还款、IRR，可在 node 里直接测 |

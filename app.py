@@ -536,6 +536,7 @@ async def review_run(payload: dict) -> dict:
             body.get("exclude") or "",
             int(body.get("max_tokens") or 0),
             config_mod.load(),
+            bool(body.get("quick")),
         )
         return {"ok": True, **result}
     except review_mod.ReviewError as exc:

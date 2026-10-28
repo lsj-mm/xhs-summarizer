@@ -25,6 +25,22 @@ from . import config as config_mod
 LOG = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+QUICK_LIMIT = 5
+DEFAULT_EXCLUDES = ",".join([
+    "**/.git/**", "**/_vendor/**", "**/node_modules/**", "**/__pycache__/**",
+    "**/work/**", "**/output/**", "**/dist/**", "**/build/**", "**/.next/**",
+    "**/coverage/**", "**/.venv/**", "**/venv/**", "**/*.min.js", "**/*.map",
+    "**/*.lock", "**/package-lock.json", "**/pnpm-lock.yaml", "**/yarn.lock",
+])
+CODE_EXTS = {
+    ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".vue", ".go",
+    ".java", ".kt", ".kts", ".cs", ".c", ".cc", ".cpp", ".h", ".hpp",
+    ".rs", ".php", ".rb", ".swift", ".sql", ".sh", ".ps1", ".html", ".css", ".scss",
+}
+SKIP_DIRS = {
+    ".git", "_vendor", "node_modules", "__pycache__", "work", "output",
+    "dist", "build", ".next", "coverage", ".venv", "venv", "site-packages",
+}
 
 
 class ReviewError(RuntimeError):
@@ -82,6 +98,27 @@ def _target(project: str):
     if target.is_file():
         return target, target.parent, target.name
     raise ReviewError(f"项目路径不存在：{target}")
+
+
+def _quick_paths(root: Path, limit: int = QUICK_LIMIT) -> list[str]:
+    """挑最近修改的少量源码文件，避免一上来就全项目扫描。"""
+    candidates = []
+    for current, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".git")]
+        for name in files:
+            path = Path(current) / name
+            if path.suffix.lower() not in CODE_EXTS:
+                continue
+            try:
+                size = path.stat().st_size
+                mtime = path.stat().st_mtime
+            except OSError:
+                continue
+            if size <= 0 or size > 300_000:
+                continue
+            candidates.append((mtime, path.relative_to(root).as_posix()))
+    candidates.sort(reverse=True)
+    return [rel for _, rel in candidates[:limit]]
 
 
 def pick_path(kind: str = "dir") -> dict:
@@ -198,6 +235,29 @@ def _report_dir(config: dict) -> Path:
     return path
 
 
+def _human_review(comments: list[dict]) -> list[dict]:
+    """挑出最需要人工确认的项，AI 审查不能直接当成结论。"""
+    priority = {"high": 0, "medium": 1, "low": 2}
+    selected = []
+    for comment in comments:
+        severity = str(comment.get("severity") or "unknown").lower()
+        if severity not in priority:
+            continue
+        content = str(comment.get("content") or "").strip().replace("\n", " ")
+        selected.append({
+            "path": comment.get("path") or "",
+            "line": comment.get("start_line") or 0,
+            "severity": severity,
+            "category": comment.get("category") or "",
+            "reason": ("高危问题，优先确认" if severity == "high"
+                       else "中危问题，建议复核" if severity == "medium"
+                       else "低危建议，可择机确认"),
+            "summary": content[:120],
+        })
+    selected.sort(key=lambda x: priority.get(x["severity"], 9))
+    return selected
+
+
 def _render_markdown(data: dict, meta: dict) -> str:
     summary = data.get("summary") or {}
     comments = data.get("comments") or []
@@ -231,6 +291,20 @@ def _render_markdown(data: dict, meta: dict) -> str:
     project_summary = (data.get("project_summary") or "").strip()
     if project_summary:
         lines += ["## 项目总结", "", project_summary, ""]
+    human = _human_review(comments)
+    lines += ["## 需要人工核查", ""]
+    if human:
+        for item in human:
+            where = item["path"] + (f":{item['line']}" if item["line"] else "")
+            lines.append(f"- [{item['severity']}] `{where}`：{item['reason']}。{item['summary']}")
+    else:
+        lines.append("- 本次没有高/中危评论；仍建议人工确认关键路径和业务语义。")
+    lines += [
+        "",
+        "- AI 未自动验证：运行时行为、业务规则、依赖漏洞、测试覆盖、性能、真实并发竞态。",
+        "- AI 可能误报或漏报；报告中的建议不要未经确认直接批量应用。",
+        "",
+    ]
     lines += ["## 问题明细", ""]
     if not comments:
         if warnings:
@@ -292,7 +366,8 @@ def info(config: dict | None = None) -> dict:
 
 
 def run(project: str, mode: str = "scan", paths: str = "", exclude: str = "",
-        max_tokens: int = 0, config: dict | None = None) -> dict:
+        max_tokens: int = 0, config: dict | None = None,
+        quick: bool = False) -> dict:
     config = config or config_mod.load()
     mode = "review" if mode == "review" else "scan"
     project_path, repo_root, single_file = _target(project)
@@ -307,6 +382,15 @@ def run(project: str, mode: str = "scan", paths: str = "", exclude: str = "",
             raise ReviewError("Git 变更审查需要目标目录是 Git 仓库")
 
     ocr = find_ocr()
+    try:
+        # 让 OCR 输出中文；失败不影响审查
+        subprocess.run(
+            [ocr, "config", "set", "language", "zh"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        LOG.warning("设置 OCR 语言为中文失败")
     model = _review_model(config)
     report_id = _report_id()
     report_dir = _report_dir(config)
@@ -318,12 +402,19 @@ def run(project: str, mode: str = "scan", paths: str = "", exclude: str = "",
         "--format", "json", "--output", str(json_path),
         "--timeout", "15", "--concurrency", "4", "--color", "never",
     ]
+    quick_used = bool(quick and not single_file and not paths.strip())
     if mode == "scan":
         scan_paths = single_file or paths.strip()
+        if quick and not single_file and not scan_paths:
+            picked = _quick_paths(repo_root)
+            if not picked:
+                raise ReviewError("没有找到可快速审查的源码文件，请改用全量扫描或指定路径")
+            scan_paths = ",".join(picked)
         if scan_paths:
             args += ["--path", scan_paths]
-        if exclude.strip():
-            args += ["--exclude", exclude.strip()]
+        excludes = ",".join(x for x in (DEFAULT_EXCLUDES, exclude.strip()) if x)
+        if excludes:
+            args += ["--exclude", excludes]
         if int(max_tokens or 0) > 0:
             args += ["--max-tokens-budget", str(int(max_tokens))]
 
@@ -362,7 +453,9 @@ def run(project: str, mode: str = "scan", paths: str = "", exclude: str = "",
 
     meta = {
         "project": str(project_path),
-        "mode_name": "单文件扫描" if single_file else ("Git 变更审查" if mode == "review" else "全量扫描"),
+        "mode_name": ("单文件扫描" if single_file else
+                      ("快速扫描（最多 5 个文件）" if quick_used else
+                       ("Git 变更审查" if mode == "review" else "全量扫描"))),
         "model": f"{model.get('label')} / {model.get('model')}",
         "created_at": created_at,
     }
@@ -379,6 +472,7 @@ def run(project: str, mode: str = "scan", paths: str = "", exclude: str = "",
         "elapsed": round(elapsed, 1),
         "summary": data.get("summary") or {},
         "comments": data.get("comments") or [],
+        "human_review": _human_review(data.get("comments") or []),
         "warnings": data.get("warnings") or [],
         "status": data.get("status") or "",
         "project_summary": data.get("project_summary") or "",

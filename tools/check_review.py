@@ -65,6 +65,11 @@ def main() -> int:
     check("# 代码审查报告" in md and "xhs/config.py:10-11" in md, "报告包含标题和行号")
     check("不要在这里泄露 key" in md and "建议代码" in md, "报告包含问题和建议")
     check("项目总结" in md and "Top Issues" in md, "报告包含项目总结")
+    check("需要人工核查" in md and "[high]" in md, "报告列出需要人工核查的高危项")
+
+    human = review._human_review(data["comments"])
+    check(len(human) == 1 and human[0]["severity"] == "high",
+          "人工核查列表会提取高危评论")
 
     empty = {**data, "comments": [], "summary": {"files_reviewed": 1, "comments": 0}}
     md2 = review._render_markdown(empty, {
@@ -92,6 +97,14 @@ def main() -> int:
           "代码审查模型设置不泄露 key")
     check(any(item["value"] == "local" for item in view["options"]),
           "代码审查模型设置包含本地模型选项")
+    masked_cfg = review.config_mod.deep_merge(
+        review.config_mod.DEFAULTS,
+        {"codereview": {"provider": "custom", "api_key": "secret-review-key"}},
+    )
+    masked = review.config_mod.masked_view(masked_cfg)
+    check(masked["codereview"]["api_key"] == ""
+          and masked["codereview"]["api_key_set"],
+          "配置视图会掩码 codereview.api_key")
     file_path = PROJECT_ROOT / "README.md"
     target, repo_root, single = review._target(str(file_path))
     check(target == file_path and repo_root == PROJECT_ROOT and single == "README.md",

@@ -813,6 +813,8 @@ def main() -> int:
           "学习路径和代码审查都支持本地模型选项")
     check("rvPickDir" in review_html and "/api/review/pick" in review_html,
           "代码审查页支持系统选择文件夹/文件")
+    check("快速审查" in review_html and "需要人工核查" in review_html,
+          "代码审查页有快速模式和人工核查提示")
 
     file_server.shutdown()
     stub_server.shutdown()
