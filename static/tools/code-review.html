@@ -336,7 +336,7 @@ function renderReport(data) {
     + '<h2>审查报告</h2>'
     + '<div class="hint">' + esc(data.project) + ' · ' + esc(data.mode_name || '') + ' · ' + esc(data.model || '') + '</div>'
     + '</div><div class="actions">'
-    + '<a href="' + esc(data.report_url) + '" target="_blank" rel="noreferrer">下载 Markdown</a>'
+    + '<a href="' + esc(data.report_url) + '?download=1" download target="_blank" rel="noreferrer">下载 Markdown</a>'
     + '<a href="' + esc(data.json_url) + '" target="_blank" rel="noreferrer">JSON</a>'
     + '</div></div>'
     + summaryHtml

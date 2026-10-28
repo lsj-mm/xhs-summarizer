@@ -547,10 +547,17 @@ async def review_run(payload: dict) -> dict:
 
 
 @app.get("/api/review/report/{report_id}")
-async def review_report(report_id: str):
+async def review_report(report_id: str, download: bool = False):
     try:
         text = await asyncio.to_thread(review_mod.read_report, report_id)
-        return PlainTextResponse(text, media_type="text/markdown; charset=utf-8")
+        headers = {}
+        if download:
+            headers["Content-Disposition"] = (
+                f'attachment; filename="code-review-{report_id}.md"'
+            )
+        return PlainTextResponse(
+            text, media_type="text/markdown; charset=utf-8", headers=headers
+        )
     except review_mod.ReviewError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
