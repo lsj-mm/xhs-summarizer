@@ -662,11 +662,12 @@ def main() -> int:
     import app as app_mod  # noqa: PLC0415  导入即构建应用，离线不影响
 
     tool_list = app_mod.discover_tools()
-    check(len(tool_list) >= 7, "扫描到至少七个工具",
+    check(len(tool_list) >= 8, "扫描到至少八个工具",
           "、".join(f"{t['icon']}{t['name']}" for t in tool_list))
     check([t["id"] for t in tool_list] == ["notes", "tax-calc", "english", "keywords",
-                                           "lottery", "learning", "code-review"],
-          "按 order 排序（笔记、税率、英语、关键字、彩票、学习、代码审查）",
+                                           "lottery", "learning", "code-review",
+                                           "github-trending"],
+          "按 order 排序（笔记、税率、英语、关键字、彩票、学习、代码审查、GitHub 趋势）",
           "、".join(t["id"] for t in tool_list))
     check(all((app_mod.TOOLS_DIR / f"{t['id']}.html").is_file() for t in tool_list),
           "每个工具都有对应的页面文件")
@@ -826,6 +827,16 @@ def main() -> int:
           "代码审查页有快速模式和人工核查提示")
     check("?download=1" in review_html,
           "代码审查报告使用附件方式下载")
+
+    trending_html = (app_mod.TOOLS_DIR / "github-trending.html").read_text(encoding="utf-8")
+    check("GitHub 趋势" in trending_html and "/api/trending" in trending_html,
+          "GitHub 趋势页已接入 /api/trending")
+    check((PROJECT_ROOT / "xhs" / "trending.py").is_file(),
+          "GitHub Trending 抓取与解析在 xhs/trending.py")
+    check((PROJECT_ROOT / "tools" / "check_trending.py").is_file(),
+          "GitHub 趋势工具有离线测试")
+    check((app_mod.TOOLS_DIR / "github-trending.meta.json").is_file(),
+          "GitHub 趋势工具有 meta.json")
 
     file_server.shutdown()
     stub_server.shutdown()

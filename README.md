@@ -12,6 +12,7 @@
 | 🎲 彩票模拟摇号 | 大乐透 / 双色球 / 快乐8：官方历史数据、走势统计、单式/复式/胆拖模拟；内置竞彩足球参考，仅供娱乐 |
 | 🎓 学习路径与考核 | 按主题和目标生成阶段路径、资源入口和阶段考核，严格执行 3 次机会、80 分通过、不过重学 |
 | 🔍 代码审查 | 接入 OpenCodeReview，对本地项目做全量扫描/Git 变更审查，生成行级问题与 Markdown 报告 |
+| 📈 GitHub 趋势 | 抓取 GitHub Trending 日榜/周榜前 10，附中文摘要、Star 数据和可点击仓库链接 |
 
 「税率计算」的五个标签页也可以用地址直接打开，例如 `#/salary`、`#/mortgage`、`#/prepay`、`#/carloan`、`#/vat`。
 
@@ -315,6 +316,20 @@ $env:XUNFEI_API_SECRET="你的 APISecret"
 
 ---
 
+## GitHub 趋势
+
+抓取 [GitHub Trending](https://github.com/trending) 日榜/周榜，固定展示前 10 条：
+
+- **中文摘要**：把英文仓库描述交给默认模型生成一句话中文摘要，失败时回退原文；
+- **真实链接**：每条附 `https://github.com/owner/repo`，点名称或「打开仓库」即可跳转；
+- **元信息**：语言、总 Star、今日/本周新增 Star；
+- **筛选**：按今日/本周、编程语言筛选；
+- **缓存**：同一条件缓存 10 分钟，点「刷新」强制重新抓取。
+
+接口 `GET /api/trending?since=daily&language=python`；离线测试 `python tools/check_trending.py`。
+
+---
+
 ## 小红书视频转笔记
 
 粘贴一条小红书分享链接，工具会自动下载视频、把语音转成文字，然后**按内容类型**整理成 markdown：
@@ -500,7 +515,7 @@ python tools/selfcheck.py
 node tools/check_finance.js
 ```
 
-**验证状态**：离线自检 140 项、HTTP 接口层 12 项均通过。另外用一条真实公开笔记跑了完整链路
+**验证状态**：离线自检 144 项、HTTP 接口层 12 项均通过。另外用一条真实公开笔记跑了完整链路
 （短链跟跳转 → 下载 9.0 MB / 时长 02:34 → 标题、作者、正文、发布日期全部取对 → 提取出 4 个工具
 → 用**真实 GitHub 接口**核实链接 → 生成 md：REA、Ghidra 都正确匹配到仓库，另外两个老实写「未找到」）。
 转写与总结两步用的是本地假服务替身，未消耗任何额度；真实付费接口的表现取决于你的 key 与账户状态。
@@ -604,6 +619,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `football.py` | 竞彩足球参考：500.com 赛程/赔率、比分/半全场/总进球 |
 | `learning.py` | 学习路径：AI 规划、阶段状态、判分、3 次机会与重学 |
 | `review.py` | OpenCodeReview 调用、JSON 解析和 Markdown 报告生成 |
+| `trending.py` | GitHub Trending 抓取、前 10 解析、中文摘要和缓存 |
 | `jobs.py` | 作业状态与事件总线（SSE 历史/增量） |
 | `pipeline.py` | 把解析、下载、转写、总结、落盘串成流水线 |
 | `sandbox.py` | 临时目录权限兼容补丁 |
@@ -627,6 +643,8 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `tools/learning.meta.json` | 学习路径工具的列表元数据 |
 | `tools/code-review.html` | 代码审查页面：项目路径、扫描模式、问题列表和报告下载 |
 | `tools/code-review.meta.json` | 代码审查工具的列表元数据 |
+| `tools/github-trending.html` | GitHub 趋势页面：日榜/周榜、语言筛选、中文摘要和仓库链接 |
+| `tools/github-trending.meta.json` | GitHub 趋势工具的列表元数据 |
 | `tools/_shared/base.css` | 各工具共用的基础样式 |
 | `tools/_shared/finance.js` | 金融计算纯函数：个税、社保、摊还、提前还款、IRR |
 | `tools/_shared/loan-ui.js` | 房贷/车贷/提前还款共用的结果渲染 |
@@ -648,6 +666,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `check_football.py` | 500.com 行解析、赔率概率、推荐结构与缺失数据处理测试 |
 | `check_learning.py` | 学习计划校验、判分、三次机会状态与答案不泄露测试 |
 | `check_review.py` | OCR 查找、模型映射、报告渲染和路径穿越测试 |
+| `check_trending.py` | GitHub Trending HTML 解析、链接、Star 数和语言筛选测试 |
 
 ### 运行期目录（不纳入 Git）
 

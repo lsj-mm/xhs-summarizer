@@ -1,0 +1,6 @@
+{
+  "name": "GitHub 趋势",
+  "description": "抓取 GitHub Trending 日榜/周榜前 10，附中文摘要和可点击仓库链接",
+  "icon": "📈",
+  "order": 75
+}

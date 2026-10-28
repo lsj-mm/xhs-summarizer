@@ -34,6 +34,7 @@ from xhs import pipeline as pipeline_mod
 from xhs import pronounce as pronounce_mod
 from xhs import review as review_mod
 from xhs import summarize as summarize_mod
+from xhs import trending as trending_mod
 
 logging.basicConfig(
     level=logging.INFO,
@@ -483,6 +484,23 @@ async def learning_reset(plan_id: str, stage_index: int) -> dict:
         return {"ok": True, "plan": plan}
     except learning_mod.LearningError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+# ------------------------------------------------------------------ GitHub 趋势
+
+@app.get("/api/trending")
+async def github_trending(since: str = "daily", language: str = "",
+                          refresh: bool = False) -> dict:
+    try:
+        data = await asyncio.to_thread(
+            trending_mod.fetch_trending, since, language, config_mod.load(), refresh
+        )
+        return {"ok": True, **data}
+    except trending_mod.TrendingError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("GitHub 趋势抓取失败")
+        raise HTTPException(status_code=502, detail=f"GitHub 趋势抓取失败：{exc}") from exc
 
 
 # ------------------------------------------------------------------ 代码审查

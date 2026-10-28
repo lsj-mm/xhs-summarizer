@@ -30,6 +30,7 @@ resolve.py → download.py → audio.py → asr.py → summarize.py → github.p
 | `football.py` | 竞彩足球参考：500.com 赛程/赔率、比分/半全场/总进球 |
 | `learning.py` | 学习路径：AI 规划、模型选择、阶段状态、判分、3 次机会与重学 |
 | `review.py` | OpenCodeReview 调用、JSON 解析和 Markdown 报告生成 |
+| `trending.py` | GitHub Trending 抓取、前 10 解析、中文摘要和缓存 |
 
 ## 约定
 

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GitHub 趋势</title>
+<link rel="stylesheet" href="/static/tools/_shared/base.css" />
+<style>
+  .wrap{max-width:1060px;margin:0 auto;padding:24px 20px 56px}
+  header.top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  header.top .logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#24292f,#57606a);
+    display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 auto}
+  header.top h1{font-size:18px;margin:0;font-weight:650}
+  header.top .sub{color:var(--muted);font-size:12.5px}
+  .grow{flex:1}
+  .controls{display:grid;grid-template-columns:150px 180px minmax(0,1fr) auto;gap:9px;align-items:end;margin-bottom:14px}
+  .controls .field{margin:0;min-width:0}
+  .controls label{display:block;font-size:11.5px;font-weight:600;margin-bottom:4px}
+  .controls select,.controls button{width:100%;box-sizing:border-box;padding:8px 9px;border:1px solid var(--line);
+    border-radius:8px;background:#fff;font-family:inherit;font-size:12.5px;color:var(--ink)}
+  .controls button{cursor:pointer;background:#24292f;color:#fff;border-color:#24292f;font-weight:600}
+  .controls button:hover{background:#3b434b}
+  .controls button:disabled{opacity:.55;cursor:not-allowed}
+  .meta-line{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11px;
+    background:#f1f2f5;color:var(--muted)}
+  .pill.ok{background:#e7f7ee;color:#0f7b3d}
+  .pill.warn{background:#fff5e5;color:#8a6100}
+  .pill.err{background:#fdecea;color:#b42318}
+  .tool{display:flex;gap:12px;border:1px solid var(--line);border-radius:11px;padding:13px 14px;margin-bottom:9px;
+    background:#fcfcfd}
+  .rank{width:30px;height:30px;border-radius:9px;background:#f1f2f5;color:#57606a;display:flex;
+    align-items:center;justify-content:center;font-weight:800;font-size:13px;flex:0 0 auto}
+  .tool:nth-child(-n+3) .rank{background:#fff4e5;color:#9a5b00}
+  .main{min-width:0;flex:1}
+  .name{font-size:14px;font-weight:700;margin-bottom:3px;word-break:break-all}
+  .name a{color:#0f172a;text-decoration:none}
+  .name a:hover{color:var(--accent-dark);text-decoration:underline}
+  .summary{font-size:13px;line-height:1.75;color:#1f2937;margin-bottom:4px}
+  .desc{font-size:11.8px;line-height:1.65;color:var(--muted);margin-bottom:4px}
+  .meta{display:flex;gap:9px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);align-items:center}
+  .meta .lang{font-weight:600;color:#3b434b}
+  .meta .today{color:#0f7b3d;font-weight:600}
+  .go{font-size:11.5px;border:1px solid var(--line);border-radius:7px;padding:6px 9px;text-decoration:none;
+    color:var(--accent-dark);background:#fff;white-space:nowrap;align-self:flex-start}
+  .go:hover{background:#f7f8fa}
+  .empty{text-align:center;color:var(--muted);padding:45px 16px;font-size:13px}
+  .empty .big{font-size:36px;margin-bottom:7px}
+  .err{background:#fff7f6;border:1px solid #f3c9c4;color:#a4261b;border-radius:9px;padding:11px 13px;
+    font-size:12.5px;white-space:pre-wrap;line-height:1.7}
+  .loading{color:var(--muted);font-size:13px;padding:12px 0}
+  .hidden{display:none !important}
+  @media (max-width:760px){
+    .controls{grid-template-columns:1fr 1fr}
+    .controls .refresh-wrap{grid-column:1 / -1}
+    .tool{gap:8px;padding:11px}
+    .go{font-size:11px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">📈</div>
+    <div>
+      <h1>GitHub 趋势</h1>
+      <div class="sub">Trending 前 10 · 中文摘要 · 仓库链接可点击</div>
+    </div>
+    <div class="grow"></div>
+    <span class="pill">数据来自 GitHub Trending</span>
+  </header>
+
+  <div class="controls">
+    <div class="field">
+      <label for="trSince">时间范围</label>
+      <select id="trSince">
+        <option value="daily">今日热榜</option>
+        <option value="weekly">本周热榜</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="trLanguage">语言</label>
+      <select id="trLanguage">
+        <option value="">全部语言</option>
+        <option value="python">Python</option>
+        <option value="typescript">TypeScript</option>
+        <option value="javascript">JavaScript</option>
+        <option value="go">Go</option>
+        <option value="rust">Rust</option>
+        <option value="java">Java</option>
+        <option value="c++">C++</option>
+        <option value="shell">Shell</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>&nbsp;</label>
+      <div class="meta-line" id="trMeta" style="margin:0;font-size:11.5px;color:var(--muted)">准备加载…</div>
+    </div>
+    <div class="refresh-wrap">
+      <button id="trRefresh" type="button">刷新</button>
+    </div>
+  </div>
+
+  <div id="trMessage"></div>
+  <div id="trList"></div>
+  <div class="empty" id="trEmpty">
+    <div class="big">📈</div>
+    <div>正在读取 GitHub Trending 前 10 条…</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const $ = (id) => document.getElementById(id);
+const state = { loading: false, data: null };
+
+function esc(text) {
+  return String(text == null ? '' : text).replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
+async function api(url) {
+  const response = await fetch(url);
+  let data = {};
+  try { data = await response.json(); } catch (e) { /* ignore */ }
+  if (!response.ok) throw new Error((data && data.detail) || ('HTTP ' + response.status));
+  return data;
+}
+
+function setMessage(html) { $('trMessage').innerHTML = html || ''; }
+
+function render(data) {
+  state.data = data;
+  $('trEmpty').classList.add('hidden');
+  const items = data.items || [];
+  $('trList').innerHTML = items.map((item) => {
+    const isAi = item.summary_source === 'ai';
+    const summary = item.summary || item.description || '描述暂缺，建议打开仓库查看';
+    const desc = isAi && item.description ? '<div class="desc">原描述：' + esc(item.description) + '</div>' : '';
+    return '<div class="tool">'
+      + '<div class="rank">' + esc(item.rank) + '</div>'
+      + '<div class="main">'
+      + '<div class="name"><a href="' + esc(item.url) + '" target="_blank" rel="noreferrer">'
+      + esc(item.full_name) + '</a></div>'
+      + '<div class="summary">' + esc(summary) + '</div>'
+      + desc
+      + '<div class="meta">'
+      + (item.language ? '<span class="lang">' + esc(item.language) + '</span>' : '<span class="lang">语言未标注</span>')
+      + '<span>Star ' + esc(item.stars || '—') + '</span>'
+      + (item.stars_today ? '<span class="today">' + esc(item.stars_today_label || '今日') + ' +' + esc(item.stars_today) + '</span>' : '')
+      + '<span>#' + esc(item.rank) + '</span>'
+      + '</div></div>'
+      + '<a class="go" href="' + esc(item.url) + '" target="_blank" rel="noreferrer">打开仓库 ↗</a>'
+      + '</div>';
+  }).join('');
+  const time = (data.fetched_at || '').replace('T', ' ').slice(0, 16);
+  $('trMeta').innerHTML = '<span class="pill ' + (data.ai_summary ? 'ok' : 'warn') + '">'
+    + (data.ai_summary ? 'AI 中文摘要' : '原描述回退') + '</span>'
+    + '<span>' + esc(time) + '</span>'
+    + (data.cached ? '<span>缓存</span>' : '');
+}
+
+async function load(force) {
+  if (state.loading) return;
+  state.loading = true;
+  $('trRefresh').disabled = true;
+  $('trRefresh').textContent = '加载中…';
+  setMessage('<div class="loading">正在抓取 GitHub Trending，首次可能需要几秒…</div>');
+  $('trEmpty').classList.add('hidden');
+  try {
+    const params = new URLSearchParams({
+      since: $('trSince').value,
+      language: $('trLanguage').value,
+      refresh: force ? '1' : '0'
+    });
+    const data = await api('/api/trending?' + params.toString());
+    setMessage('');
+    render(data);
+  } catch (err) {
+    $('trList').innerHTML = '';
+    $('trEmpty').classList.remove('hidden');
+    $('trEmpty').innerHTML = '<div class="big">⚠️</div><div>暂时取不到数据</div>';
+    setMessage('<div class="err">' + esc(err.message) + '</div>');
+  } finally {
+    state.loading = false;
+    $('trRefresh').disabled = false;
+    $('trRefresh').textContent = '刷新';
+  }
+}
+
+$('trRefresh').addEventListener('click', () => load(true));
+$('trSince').addEventListener('change', () => load(true));
+$('trLanguage').addEventListener('change', () => load(true));
+load(false);
+</script>
+</body>
+</html>
