@@ -425,6 +425,15 @@ def main() -> int:
     )
     check([t["name"] for t in alt] == ["Docling"], "也能识别「提到的工具」这一节",
           "、".join(t["name"] for t in alt))
+    listed = store_mod.parse_tool_table(
+        "## 推荐清单\n1. **技能侦探**：找出完成任务需要的技能。\n"
+        "   GitHub：[acme/skill-detective](https://github.com/acme/skill-detective)\n"
+        "2. **分解师**：拆解任务。\n   GitHub：未找到公开仓库\n"
+    )
+    check([t["name"] for t in listed] == ["技能侦探", "分解师"], "能识别新版有序工具清单",
+          "、".join(t["name"] for t in listed))
+    check(listed[0]["url"] == "https://github.com/acme/skill-detective" and listed[1]["url"] == "",
+          "有序清单里的 GitHub 链接和未找到都能识别")
 
     # JSON 解析要能容忍代码块包裹和前后解释文字
     for raw in ('{"a": 1}', '```json\n{"a": 1}\n```', '好的，结果如下：\n{"a": 1}\n以上。'):

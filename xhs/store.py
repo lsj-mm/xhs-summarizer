@@ -100,15 +100,19 @@ def _stamp(seconds: float | None) -> str:
 
 _TABLE_ROW_LINK = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
 # 工具表可能出现在两种标题下：工具类视频用「工具清单」，其它类型用「提到的工具」
-_TOOL_SECTION_KEYS = ("工具清单", "提到的工具")
+_TOOL_SECTION_KEYS = ("工具清单", "推荐清单", "提到的工具")
+_TOOL_LIST_ITEM = re.compile(r"^\d+\.\s+\*\*(.+?)\*\*\s*[：:]?\s*(.*)$")
 
 
 def parse_tool_table(body: str) -> list[dict]:
-    """从正文的工具表里解析出工具名与链接。
+    """从正文的工具表/有序清单里解析工具名与链接。
 
-    为什么以表格为准写 front matter：
+    为什么以正文为准写 front matter：
         成文阶段可能补上提取阶段漏掉的工具，如果 front matter 用的是提取结果，
         就会出现「front matter 说 3 个、正文写了 5 个」这种自相矛盾。
+    支持两种格式：
+        - 旧版 markdown 表格：| 工具 | 作用 | 项目地址 |
+        - 新版有序清单：1. **工具名**：作用，下一行 GitHub：[owner/repo](url)
     """
     lines = (body or "").splitlines()
     start = None
@@ -121,27 +125,44 @@ def parse_tool_table(body: str) -> list[dict]:
         return []
 
     tools: list[dict] = []
+    current = None
     for line in lines[start + 1:]:
         stripped = line.strip()
         if stripped.startswith("## "):  # 进入下一节
             break
-        if not stripped.startswith("|"):
+        if stripped.startswith("|"):
+            current = None
+            cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+            if len(cells) < 3:
+                continue
+            name = cells[0]
+            if not name or name == "工具" or set(name) <= set("-: "):
+                continue
+            match = _TABLE_ROW_LINK.search(cells[2])
+            tools.append({
+                "name": name,
+                "url": match.group(2) if match else "",
+                "full_name": match.group(1) if match else "",
+            })
             continue
-        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
-        if len(cells) < 3:
-            continue
-        name = cells[0]
-        # 跳过表头行和 |---|---| 这种分隔行
-        if not name or name == "工具" or set(name) <= set("-: "):
-            continue
-        match = _TABLE_ROW_LINK.search(cells[2])
-        tools.append(
-            {
+        item = _TOOL_LIST_ITEM.match(stripped)
+        if item:
+            name = item.group(1).strip().rstrip("：:，,")
+            rest = item.group(2).strip()
+            match = _TABLE_ROW_LINK.search(rest)
+            current = {
                 "name": name,
                 "url": match.group(2) if match else "",
                 "full_name": match.group(1) if match else "",
             }
-        )
+            tools.append(current)
+            continue
+        # 编号项下一行的 GitHub 链接
+        if current and not current["url"]:
+            match = _TABLE_ROW_LINK.search(stripped)
+            if match and "github.com" in match.group(2).lower():
+                current["url"] = match.group(2)
+                current["full_name"] = match.group(1)
     return tools
 
 
