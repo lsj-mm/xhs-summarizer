@@ -1,7 +1,14 @@
 # 工具箱
 
+[![CI](https://github.com/lsj-mm/xhs-summarizer/actions/workflows/ci.yml/badge.svg)](https://github.com/lsj-mm/xhs-summarizer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 一个本地网页工具箱：**左侧是工具列表，点哪个右侧就出现哪个工具的面板**。
 启动后打开 <http://127.0.0.1:8787/>，地址栏会记住你上次用的工具（`#/notes`、`#/tax-rate`）。
+
+> **非官方声明**：本项目是非官方个人工具，与小红书、GitHub、DeepSeek 等平台无隶属或合作关系。
+> 仅用于个人学习和技术研究；使用下载、转写、抓取功能时请遵守各平台用户协议和内容版权，
+> 不要下载、传播无权使用的内容。AI 生成内容可能有误，代码审查报告不构成专业意见。
 
 | 工具 | 说明 |
 |---|---|
@@ -371,12 +378,18 @@ $env:XUNFEI_API_SECRET="你的 APISecret"
 ### 1. 安装依赖（只需一次）
 
 ```powershell
-cd E:\AISoft\xhs-summarizer
+git clone https://github.com/lsj-mm/xhs-summarizer.git
+cd xhs-summarizer
 python bootstrap_deps.py
 ```
 
+如果已经下载/克隆了项目，只需要在项目目录执行 `python bootstrap_deps.py`。
+
 依赖（yt-dlp、自带 ffmpeg 的 imageio-ffmpeg、requests）会装到项目内的 `_vendor/` 目录，
-不会碰你的 Anaconda 环境。**不需要**自己另外装 ffmpeg。
+不会碰你系统里的 Python 环境。**不需要**自己另外装 ffmpeg。
+
+需要 Windows 64 位 + Python 3.13；不想使用脚本时也可以执行
+`python -m pip install -r requirements.txt`（依赖装到当前 Python 环境）。
 
 > 为什么不用 `pip install`：本机 pip 会在自己的临时目录里解包，而那种临时目录在受限环境下
 > 建出来就写不进去（`[Errno 13]`）。`bootstrap_deps.py` 改成自己下载 wheel 再用 zipfile 解压，
@@ -515,7 +528,7 @@ python tools/selfcheck.py
 node tools/check_finance.js
 ```
 
-**验证状态**：离线自检 144 项、HTTP 接口层 12 项均通过。另外用一条真实公开笔记跑了完整链路
+**验证状态**：离线自检 146 项、HTTP 接口层 12 项均通过。另外用一条真实公开笔记跑了完整链路
 （短链跟跳转 → 下载 9.0 MB / 时长 02:34 → 标题、作者、正文、发布日期全部取对 → 提取出 4 个工具
 → 用**真实 GitHub 接口**核实链接 → 生成 md：REA、Ghidra 都正确匹配到仓库，另外两个老实写「未找到」）。
 转写与总结两步用的是本地假服务替身，未消耗任何额度；真实付费接口的表现取决于你的 key 与账户状态。
@@ -722,36 +735,26 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 
 ### 用 Git 同步（推荐长期用）
 
+公开仓库：<https://github.com/lsj-mm/xhs-summarizer>
+
 项目里已经有 `.gitignore`，它会排除 `_vendor/`、`_wheels/`、`output/`、`work/`、
-`config.json`、`tools/_selfcheck/` 和 `__pycache__/`，所以推到仓库的只有代码和文档，体积很小。
+`config.json`、`tools/_selfcheck/` 和 `__pycache__/`，所以仓库里只有代码和文档，体积很小。
 
-在一台电脑上建私有仓库（GitHub / Gitee 都行，不要勾选自动生成 README）：
-
-```powershell
-cd E:\AISoft\xhs-summarizer
-git init
-git add .
-git commit -m "工具箱：笔记 + 税率 + 英语 + 多语言关键字"
-git branch -M main
-git remote add origin <你的私有仓库地址>
-git push -u origin main
-```
-
-另一台电脑：
+首次克隆：
 
 ```powershell
-git clone <你的私有仓库地址> D:\工具箱\xhs-summarizer
-cd D:\工具箱\xhs-summarizer
+git clone https://github.com/lsj-mm/xhs-summarizer.git
+cd xhs-summarizer
 python bootstrap_deps.py     # 下载依赖到本机 _vendor
 python run.py
 ```
 
-`config.json` 不在仓库里，需要单独用 U 盘/密码管理器拷过去，或者在新电脑的设置里重新填 key；
+`config.json` 不在仓库里，需要在本机设置页重新填 key，或者从密码管理器取回；
 `output/` 里的笔记也不会进仓库，想同步笔记可以单独用 OneDrive / 坚果云 / Syncthing 同步这个目录。
-以后改代码：工作电脑 `git push`，家里 `git pull` 即可。
+以后改代码：`git pull` 更新，`git push` 提交。
 
 > 不要把 `config.json` 提交到 Git，也不要把带 key 的整个目录直接放进公共网盘。
-> 如果家里电脑不是 Python 3.13，不要拷 `_vendor`，直接在本机跑 `python bootstrap_deps.py`。
+> 如果本机 Python 不是 3.13，不要拷 `_vendor`，直接在本机跑 `python bootstrap_deps.py`。
 
 ### 要拷什么
 
@@ -784,7 +787,7 @@ python run.py
 
 ```powershell
 # 放哪都行，路径没有写死
-cd D:\工具箱\xhs-summarizer
+cd path\to\xhs-summarizer
 python run.py
 ```
 
@@ -801,8 +804,8 @@ python run.py
 ### 换机后建议跑一次自检
 
 ```powershell
-python tools/selfcheck.py      # 90+ 项：下载 → 抽音轨 → 切片 → 转写 → 提取工具 → 核实链接 → 写 md
-node tools/check_finance.js    # 67 项：个税、社保、摊还、提前还款、IRR（有 node 才跑）
+python tools/selfcheck.py      # 完整离线自检
+node tools/check_finance.js    # 金额计算测试（有 node 才跑）
 ```
 
 ---
@@ -817,3 +820,19 @@ node tools/check_finance.js    # 67 项：个税、社保、摊还、提前还�
   名字相近的一律丢弃并写「未找到」，所以链接偏少但更可靠；要更宽松可打开 `github.allow_loose_match`。
 - 服务只监听 `127.0.0.1`，没有登录鉴权，**不要**改成监听 `0.0.0.0` 暴露到公网。
 - 作业历史存在内存里，重启即清空（产出文件不受影响）。
+
+---
+
+## 开源协议
+
+本项目使用 [MIT License](LICENSE)。
+
+第三方依赖和工具（OpenCodeReview、yt-dlp、ffmpeg、FastAPI 等）仍遵循各自的许可证。
+`ocr.exe` 不随本仓库提交；如果重新分发它，请同时保留上游的许可证和 NOTICE。
+下载、转写、抓取功能涉及的内容版权和平台条款由使用者自行负责。
+
+## 参与贡献
+
+- 提交代码前请读 [CONTRIBUTING.md](CONTRIBUTING.md)
+- 报告安全问题请走 [SECURITY.md](SECURITY.md) 里的私密渠道
+- 版本变化见 [CHANGELOG.md](CHANGELOG.md)

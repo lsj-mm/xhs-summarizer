@@ -838,6 +838,14 @@ def main() -> int:
     check((app_mod.TOOLS_DIR / "github-trending.meta.json").is_file(),
           "GitHub 趋势工具有 meta.json")
 
+    license_text = (PROJECT_ROOT / "LICENSE").read_text(encoding="utf-8")
+    check("MIT License" in license_text and "lsj-mm" in license_text,
+          "仓库有 MIT LICENSE")
+    check(all((PROJECT_ROOT / name).is_file() for name in (
+        "SECURITY.md", "CONTRIBUTING.md", "CHANGELOG.md",
+        ".github/workflows/ci.yml")),
+          "有安全、贡献、变更记录和 CI 配置")
+
     file_server.shutdown()
     stub_server.shutdown()
     gh_server.shutdown()

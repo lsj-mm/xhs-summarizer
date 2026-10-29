@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python bootstrap_deps.py
+
+      - name: Offline self check
+        run: python tools/selfcheck.py
+
+      - name: Learning tests
+        run: python tools/check_learning.py
+
+      - name: Trending tests
+        run: python tools/check_trending.py
+
+      - name: Football tests
+        run: python tools/check_football.py
+
+      - name: Lottery tests
+        run: python tools/check_lottery.py
+
+      - name: Review tests (only when OCR binary exists)
+        if: ${{ hashFiles('_vendor/ocr/ocr.exe') != '' }}
+        run: python tools/check_review.py
