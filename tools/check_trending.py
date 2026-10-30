@@ -57,6 +57,8 @@ def main() -> int:
     check(trending._parse_int("2,345") == 2345, "数字清理正确")
     check(trending.parse_trending_html(SAMPLE, "weekly", limit=1)[0]["stars_today_label"] == "本周",
           "周榜标签正确")
+    check(trending.parse_trending_html(SAMPLE, "monthly", limit=1)[0]["stars_today_label"] == "本月",
+          "月榜标签正确")
     check(any(value == "python" for value, _ in trending.LANGUAGES),
           "语言筛选项包含 Python")
 

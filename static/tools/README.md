@@ -18,7 +18,7 @@
 | `learning.meta.json` | 学习路径工具的列表元数据 |
 | `code-review.html` | 代码审查：项目路径、快速/全量扫描、模型设置、人工核查提示与报告下载 |
 | `code-review.meta.json` | 代码审查工具的列表元数据 |
-| `github-trending.html` | GitHub 趋势：日榜/周榜、语言筛选、中文摘要和可点击仓库链接 |
+| `github-trending.html` | GitHub 趋势：日榜/周榜/月榜、语言筛选、中文摘要和可点击仓库链接 |
 | `github-trending.meta.json` | GitHub 趋势工具的列表元数据 |
 | `_shared/base.css` | 各工具共用的基础样式、变量和卡片布局 |
 | `_shared/finance.js` | 金融计算纯函数：个税、社保、摊还、提前还款、IRR，可在 node 里直接测 |

@@ -77,9 +77,10 @@ def parse_trending_html(source: str, since: str = "daily", limit: int = LIMIT) -
         star_match = re.search(
             r'href="[^"]*/stargazers"[^>]*>(.*?)</a>', article, re.S)
         today_match = re.search(
-            r"([\d,]+)\s+stars\s+(today|this week)", article, re.S)
+            r"([\d,]+)\s+stars\s+(today|this week|this month)", article, re.S)
         stars = _clean(star_match.group(1)) if star_match else ""
         stars_today = today_match.group(1) if today_match else ""
+        since_label = {"daily": "今日", "weekly": "本周", "monthly": "本月"}.get(since, "今日")
         items.append({
             "rank": len(items) + 1,
             "full_name": full_name,
@@ -89,7 +90,7 @@ def parse_trending_html(source: str, since: str = "daily", limit: int = LIMIT) -
             "language": _clean(language_match.group(1)) if language_match else "",
             "stars": stars,
             "stars_today": stars_today,
-            "stars_today_label": "今日" if since == "daily" else "本周",
+            "stars_today_label": since_label,
             "stars_today_num": _parse_int(stars_today),
         })
         if len(items) >= limit:
@@ -169,7 +170,7 @@ def _translate(items: list[dict], config: dict) -> tuple[list[str], bool]:
 
 def fetch_trending(since: str = "daily", language: str = "",
                    config: dict | None = None, refresh: bool = False) -> dict:
-    since = "weekly" if since == "weekly" else "daily"
+    since = since if since in ("daily", "weekly", "monthly") else "daily"
     language = (language or "").strip().lower()
     if language not in {value for value, _ in LANGUAGES}:
         language = ""

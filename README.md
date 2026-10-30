@@ -19,7 +19,7 @@
 | 🎲 彩票模拟摇号 | 大乐透 / 双色球 / 快乐8：官方历史数据、走势统计、单式/复式/胆拖模拟；内置竞彩足球参考，仅供娱乐 |
 | 🎓 学习路径与考核 | 按主题和目标生成阶段路径、资源入口和阶段考核，严格执行 3 次机会、80 分通过、不过重学 |
 | 🔍 代码审查 | 接入 OpenCodeReview，对本地项目做全量扫描/Git 变更审查，生成行级问题与 Markdown 报告 |
-| 📈 GitHub 趋势 | 抓取 GitHub Trending 日榜/周榜前 10，附中文摘要、Star 数据和可点击仓库链接 |
+| 📈 GitHub 趋势 | 抓取 GitHub Trending 日榜/周榜/月榜前 10，附中文摘要、Star 数据和可点击仓库链接 |
 
 「税率计算」的五个标签页也可以用地址直接打开，例如 `#/salary`、`#/mortgage`、`#/prepay`、`#/carloan`、`#/vat`。
 
@@ -325,12 +325,12 @@ $env:XUNFEI_API_SECRET="你的 APISecret"
 
 ## GitHub 趋势
 
-抓取 [GitHub Trending](https://github.com/trending) 日榜/周榜，固定展示前 10 条：
+抓取 [GitHub Trending](https://github.com/trending) 日榜/周榜/月榜，固定展示前 10 条：
 
 - **中文摘要**：把英文仓库描述交给默认模型生成一句话中文摘要，失败时回退原文；
 - **真实链接**：每条附 `https://github.com/owner/repo`，点名称或「打开仓库」即可跳转；
-- **元信息**：语言、总 Star、今日/本周新增 Star；
-- **筛选**：按今日/本周、编程语言筛选；
+- **元信息**：语言、总 Star、今日/本周/本月新增 Star；
+- **筛选**：按今日/本周/本月、编程语言筛选；
 - **缓存**：同一条件缓存 10 分钟，点「刷新」强制重新抓取。
 
 接口 `GET /api/trending?since=daily&language=python`；离线测试 `python tools/check_trending.py`。
@@ -656,7 +656,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `tools/learning.meta.json` | 学习路径工具的列表元数据 |
 | `tools/code-review.html` | 代码审查页面：项目路径、扫描模式、问题列表和报告下载 |
 | `tools/code-review.meta.json` | 代码审查工具的列表元数据 |
-| `tools/github-trending.html` | GitHub 趋势页面：日榜/周榜、语言筛选、中文摘要和仓库链接 |
+| `tools/github-trending.html` | GitHub 趋势页面：日榜/周榜/月榜、语言筛选、中文摘要和仓库链接 |
 | `tools/github-trending.meta.json` | GitHub 趋势工具的列表元数据 |
 | `tools/_shared/base.css` | 各工具共用的基础样式 |
 | `tools/_shared/finance.js` | 金融计算纯函数：个税、社保、摊还、提前还款、IRR |
