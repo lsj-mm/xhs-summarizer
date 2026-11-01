@@ -49,12 +49,13 @@ class ReviewError(RuntimeError):
 
 def find_ocr() -> str:
     env = (os.environ.get("OCR_BIN") or "").strip()
-    candidates = [
-        Path(env) if env else None,
-        config_mod.PROJECT_ROOT / "_vendor" / "ocr" / "ocr.exe",
-        config_mod.PROJECT_ROOT / "ocr" / "ocr.exe",
-        config_mod.PROJECT_ROOT.parent / "open-code-review-main" / "bin" / "ocr.exe",
-    ]
+    # Windows 上是 ocr.exe，macOS/Linux 上没有后缀，两种都认
+    names = ("ocr.exe", "ocr")
+    candidates = [Path(env) if env else None]
+    for base in (config_mod.PROJECT_ROOT / "_vendor" / "ocr", config_mod.PROJECT_ROOT / "ocr"):
+        for name in names:
+            candidates.append(base / name)
+    candidates.append(config_mod.PROJECT_ROOT.parent / "open-code-review-main" / "bin" / "ocr.exe")
     for candidate in candidates:
         if candidate and candidate.is_file():
             return str(candidate)
@@ -62,8 +63,9 @@ def find_ocr() -> str:
     if found:
         return found
     raise ReviewError(
-        "没有找到 ocr.exe。请把 OpenCodeReview 的 Windows 版放到 "
-        "_vendor/ocr/ocr.exe，或设置环境变量 OCR_BIN 指向它。"
+        "没有找到 OpenCodeReview 的可执行文件（ocr.exe）。"
+        "先运行 `python bootstrap_deps.py` 自动下载并校验，"
+        "或手工下载放到 _vendor/ocr/ocr.exe，或用环境变量 OCR_BIN 指向它。"
     )
 
 

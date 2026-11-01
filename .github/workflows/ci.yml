@@ -44,6 +44,6 @@ jobs:
       - name: Lottery tests
         run: python tools/check_lottery.py
 
-      - name: Review tests (only when OCR binary exists)
+      - name: Review tests (跳过说明 ocr 没下成)
         if: ${{ hashFiles('_vendor/ocr/ocr.exe') != '' }}
         run: python tools/check_review.py

@@ -9,15 +9,25 @@
     这里改成自己从 PyPI 下载 wheel、再用 zipfile 解压，全程只写工作区内的路径，
     于是不依赖任何临时目录，也不污染 Anaconda 的 site-packages。
 
+顺带装 OpenCodeReview：
+    代码审查用的 `ocr.exe` 不在 PyPI 上，也不随仓库提交（55 MB，且遵循上游
+    许可证）。以前只能手工放文件，换电脑就会「依赖都装好了，一点代码审查就
+    报找不到 ocr.exe」。现在它和 wheel 一起在这里下载，并校验官方 sha256。
+
 用法：
-    python bootstrap_deps.py            # 缺什么装什么
+    python bootstrap_deps.py            # 缺什么装什么（含 ocr 二进制）
     python bootstrap_deps.py --upgrade  # 强制重新下载（升级 yt-dlp 时用）
     python bootstrap_deps.py --list     # 只看当前已装版本
+    python bootstrap_deps.py --skip-ocr # 只要 Python 依赖，暂不下 ocr
+    python bootstrap_deps.py --only ocr # 只补 ocr 二进制
 """
 
 import argparse
+import datetime as dt
+import hashlib
 import json
 import logging
+import os
 import platform
 import re
 import shutil
@@ -70,6 +80,29 @@ PACKAGES = [
 
 PYPI_JSON = "https://pypi.org/pypi/{name}/json"
 USER_AGENT = "xhs-summarizer-bootstrap/1.0"
+
+# ---------------------------------------------------------------- OpenCodeReview
+# 升级时改 OCR_VERSION，然后跑 `python bootstrap_deps.py --only ocr --upgrade`。
+# 官方在同一个 release 下提供 sha256sum.txt，下载后必须对得上才落盘，
+# 避免半截文件或中间人替换被当成可执行文件跑起来。
+OCR_REPO = "alibaba/open-code-review"
+OCR_VERSION = "v1.13.3"
+OCR_RELEASE_BASE = "https://github.com/{repo}/releases/download/{version}"
+OCR_DIRNAME = "ocr"
+OCR_MANIFEST = "installed.json"
+# 低于这个大小基本可以断定是没下完的残文件（真实包约 55 MB）
+OCR_MIN_BYTES = 20 * 1024 * 1024
+
+# Go 的 GOOS/GOARCH 命名和常见写法不一样，这里统一映射
+_OCR_OS = {
+    "windows": "windows", "win32": "windows", "win": "windows",
+    "linux": "linux",
+    "darwin": "darwin", "macos": "darwin", "mac": "darwin",
+}
+_OCR_ARCH = {
+    "amd64": "amd64", "x86_64": "amd64", "x64": "amd64", "x86-64": "amd64",
+    "arm64": "arm64", "aarch64": "arm64",
+}
 
 
 def _wheel_rank(filename: str) -> int | None:
@@ -136,6 +169,143 @@ def _download(url: str, dest: Path) -> None:
         shutil.copyfileobj(resp, fh)
 
 
+def ocr_asset(system: str | None = None, machine: str | None = None) -> tuple[str, str]:
+    """返回 (发布包名, 落地文件名)；看不懂的平台抛 RuntimeError 让人工处理。
+
+    单独拆成纯函数，好让 tools/check_review.py 在不下载的情况下验证映射。
+    """
+    osname = (system or platform.system() or "").strip().lower()
+    arch = (machine or platform.machine() or "").strip().lower()
+    goos, goarch = _OCR_OS.get(osname), _OCR_ARCH.get(arch)
+    if not goos or not goarch:
+        raise RuntimeError(
+            f"OpenCodeReview 没有适配当前平台（{osname or '?'}/{arch or '?'}）的发布包。"
+            "请从 https://github.com/alibaba/open-code-review/releases 手工下载，"
+            "再用环境变量 OCR_BIN 指向它。"
+        )
+    asset = f"opencodereview-{goos}-{goarch}"
+    if goos == "windows":
+        return asset + ".exe", "ocr.exe"
+    return asset, "ocr"
+
+
+def parse_sha256sums(text: str, asset: str) -> str:
+    """从官方 sha256sum.txt 里取出某个包名的哈希；找不到返回空字符串。"""
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) == 2 and parts[1].lstrip("*") == asset:
+            return parts[0].strip().lower()
+    return ""
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _ocr_dir() -> Path:
+    return VENDOR_DIR / OCR_DIRNAME
+
+
+def ocr_installed() -> dict:
+    manifest = _ocr_dir() / OCR_MANIFEST
+    if manifest.is_file():
+        try:
+            return json.loads(manifest.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            LOG.debug("ocr 清单读取失败，按未安装处理")
+    return {}
+
+
+def install_ocr(force: bool = False) -> dict:
+    """下载并校验 OpenCodeReview 二进制，返回安装记录。
+
+    已有文件且版本一致时只做复用，不重复下 55 MB；`force` 才重下。
+    """
+    asset, filename = ocr_asset()
+    dest = _ocr_dir() / filename
+    record = ocr_installed()
+
+    if dest.is_file() and not force:
+        size = dest.stat().st_size
+        if size < OCR_MIN_BYTES:
+            LOG.warning("%s 只有 %.1f MB，像是没下完，重新下载", dest.name, size / 1024 / 1024)
+        elif record.get("version") == OCR_VERSION and record.get("sha256"):
+            LOG.info("OpenCodeReview %s 已就位，跳过", OCR_VERSION)
+            return record
+        else:
+            # 手工放进来或者换了版本：能校验就校验，通过就补个清单，省一次下载
+            LOG.info("发现已有的 %s，校验后复用", dest.name)
+            expected = _remote_sha256(asset)
+            actual = _sha256_file(dest)
+            if expected and actual != expected:
+                LOG.warning("%s 校验不通过（%s ≠ %s），重新下载", dest.name, actual[:12], expected[:12])
+            elif expected or size >= OCR_MIN_BYTES:
+                if not expected:
+                    LOG.warning("没拿到官方 sha256，仅按文件大小判断 %s 可用", dest.name)
+                return _write_ocr_manifest(filename, asset, actual)
+
+    LOG.info("下载 OpenCodeReview %s -> %s", OCR_VERSION, dest)
+    _ocr_dir().mkdir(parents=True, exist_ok=True)
+    partial = dest.with_name(dest.name + ".part")
+    try:
+        _download(_release_url(asset), partial)
+        expected = _remote_sha256(asset)
+        actual = _sha256_file(partial)
+        if expected and actual != expected:
+            raise RuntimeError(
+                f"{asset} 的 sha256 校验不通过（本地 {actual}，官方 {expected}），已丢弃。"
+                "可能是网络中间环节改写了文件，请重试或手工下载。"
+            )
+        if not expected:
+            LOG.warning("没取到官方 sha256sum.txt，跳过哈希校验")
+        if partial.stat().st_size < OCR_MIN_BYTES:
+            raise RuntimeError(f"{asset} 下载不完整（{partial.stat().st_size} 字节）")
+        partial.replace(dest)
+        if os.name != "nt":
+            dest.chmod(0o755)
+        return _write_ocr_manifest(filename, asset, actual)
+    finally:
+        partial.unlink(missing_ok=True)
+
+
+def _write_ocr_manifest(filename: str, asset: str, sha256: str) -> dict:
+    record = {
+        "version": OCR_VERSION,
+        "asset": asset,
+        "file": filename,
+        "sha256": sha256,
+        "installed_at": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    (_ocr_dir() / OCR_MANIFEST).write_text(
+        json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    return record
+
+
+def _release_url(name: str) -> str:
+    base = OCR_RELEASE_BASE.format(repo=OCR_REPO, version=OCR_VERSION)
+    return f"{base}/{name}"
+
+
+def _remote_sha256(asset: str) -> str:
+    """取官方 sha256sum.txt；网络异常时返回空字符串（调用方降级为只查大小）。"""
+    try:
+        req = urllib.request.Request(_release_url("sha256sum.txt"), headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            text = resp.read().decode("utf-8", "replace")
+    except Exception as exc:  # noqa: BLE001 - 校验失败不该阻断安装
+        LOG.warning("读取 sha256sum.txt 失败：%s", exc)
+        return ""
+    digest = parse_sha256sums(text, asset)
+    if not digest:
+        LOG.warning("sha256sum.txt 里没有 %s", asset)
+    return digest
+
+
 def installed_versions() -> dict:
     manifest = VENDOR_DIR / ".installed.json"
     if manifest.exists():
@@ -195,21 +365,47 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--upgrade", "-u", action="store_true", help="强制重新下载并覆盖")
     parser.add_argument("--list", "-l", action="store_true", help="只列出已装版本")
     parser.add_argument("--only", nargs="*", default=None, help="只处理指定包，例如 --only yt-dlp")
+    parser.add_argument("--skip-ocr", action="store_true",
+                        help="不下 OpenCodeReview 二进制（代码审查会因此不可用）")
     args = parser.parse_args(argv)
 
     if args.list:
         versions = installed_versions()
-        if not versions:
+        ocr = ocr_installed()
+        if not versions and not ocr:
             print("_vendor 还没有内容，先运行：python bootstrap_deps.py")
             return 0
         for name, version in versions.items():
             print(f"{name:20s} {version}")
+        if ocr:
+            print(f"{'opencode-review':20s} {ocr.get('version', '?')}  ({ocr.get('file', '?')})")
+        else:
+            print(f"{'opencode-review':20s} 未安装（代码审查不可用，--only ocr 补装）")
         return 0
 
+    want_ocr = not args.skip_ocr and (not args.only or OCR_DIRNAME in args.only)
     versions = install(force=args.upgrade, only=args.only)
+    ocr_error = ""
+    ocr = {}
+    if want_ocr:
+        try:
+            ocr = install_ocr(force=args.upgrade)
+        except Exception as exc:  # noqa: BLE001 - 装不上 ocr 不该让整个引导失败
+            ocr_error = str(exc)
+            LOG.warning("OpenCodeReview 安装失败：%s", exc)
+
     print("\n完成，_vendor/ 现有：")
     for name, version in sorted(versions.items()):
         print(f"  {name:20s} {version}")
+    if ocr:
+        print(f"  {'opencode-review':20s} {ocr.get('version')}  -> {ocr.get('file')}")
+    if ocr_error:
+        print("\n⚠ 代码审查工具暂时不可用：" + ocr_error)
+        print("  可稍后单独重试：python bootstrap_deps.py --only ocr")
+        try:
+            print(f"  或手工下载：{_release_url(ocr_asset()[0])}")
+        except RuntimeError:
+            print("  当前平台没有官方发布包，请用 OCR_BIN 指向手工下载的二进制。")
     print(f"\n目录：{VENDOR_DIR}")
     return 0
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 未发布
+
+### 修复
+
+- 换电脑或重新拉代码后，代码审查因缺少 `ocr.exe` 直接报错：`bootstrap_deps.py` 现在会按当前平台
+  自动下载 OpenCodeReview 二进制（默认 v1.13.3），用官方 `sha256sum.txt` 校验后放进 `_vendor/ocr/`，
+  版本记录在 `_vendor/ocr/installed.json`；二进制仍不进 Git
+- 不想装或想单独升级：`python bootstrap_deps.py --skip-ocr` / `--only ocr --upgrade`
+- macOS、Linux 上无后缀的 `ocr` 也能被找到，找不到时的提示直接给出自动安装命令
+
 ## v0.1.0 — 2026-10-29
 
 首个公开版本。

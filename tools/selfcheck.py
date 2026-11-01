@@ -828,6 +828,15 @@ def main() -> int:
     check("?download=1" in review_html,
           "代码审查报告使用附件方式下载")
 
+    bootstrap_text = (PROJECT_ROOT / "bootstrap_deps.py").read_text(encoding="utf-8")
+    check("OCR_VERSION" in bootstrap_text and "sha256sum.txt" in bootstrap_text,
+          "bootstrap_deps.py 会自动下载并校验 ocr 二进制")
+    check("install_ocr" in bootstrap_text and "--skip-ocr" in bootstrap_text,
+          "ocr 下载可单独重试、也可跳过")
+    readme_text = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+    check("_vendor/ocr/" in readme_text and "bootstrap_deps.py" in readme_text,
+          "README 说明换电脑如何自动补 ocr")
+
     trending_html = (app_mod.TOOLS_DIR / "github-trending.html").read_text(encoding="utf-8")
     check("GitHub 趋势" in trending_html and "/api/trending" in trending_html,
           "GitHub 趋势页已接入 /api/trending")

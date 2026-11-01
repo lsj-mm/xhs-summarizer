@@ -310,10 +310,14 @@ $env:XUNFEI_API_SECRET="你的 APISecret"
   ```powershell
   python tools/review_project.py --project E:\path\to\project
   ```
-- **OCR 二进制**：默认找 `_vendor/ocr/ocr.exe`，也支持环境变量 `OCR_BIN`。
-  当前本机已放入 v1.13.3；它约 58 MB，不提交 Git。换电脑时从
-  [Releases](https://github.com/alibaba/open-code-review/releases) 下载 Windows amd64 版放到该路径，
-  或运行 OCR 仓库里的 `install.ps1`。
+- **OCR 二进制**：默认找 `_vendor/ocr/ocr.exe`（macOS / Linux 上是 `_vendor/ocr/ocr`），也支持环境变量 `OCR_BIN`。
+  它约 55 MB，不提交 Git，但**不需要手工下载**：`python bootstrap_deps.py` 会按当前平台自动挑发布包、
+  用官方 `sha256sum.txt` 校验后放进 `_vendor/ocr/`，并把版本写进 `_vendor/ocr/installed.json`。
+  - 换电脑 / 重新拉代码：跑一次 `python bootstrap_deps.py` 即可，代码审查开箱可用；
+  - 升级版本：改 `bootstrap_deps.py` 里的 `OCR_VERSION`，再 `python bootstrap_deps.py --only ocr --upgrade`；
+  - 不想装：`python bootstrap_deps.py --skip-ocr`，其余工具不受影响，代码审查页会提示缺二进制；
+  - 官方没有发布包的平台（非 Windows / Linux / macOS 的 amd64、arm64）：从
+    [Releases](https://github.com/alibaba/open-code-review/releases) 手工下载，用 `OCR_BIN` 指定路径。
 - **注意**：代码会被发送给默认模型服务；AI 审查可能误报/漏报，报告不替代人工评审。
 - **token 预算**：默认 0（不限）；如果设得太低，OCR 会跳过文件并在报告里写运行警告。
 
@@ -387,6 +391,9 @@ python bootstrap_deps.py
 
 依赖（yt-dlp、自带 ffmpeg 的 imageio-ffmpeg、requests）会装到项目内的 `_vendor/` 目录，
 不会碰你系统里的 Python 环境。**不需要**自己另外装 ffmpeg。
+
+同一条命令还会把代码审查用的 OpenCodeReview 二进制（约 55 MB）下载到 `_vendor/ocr/`，
+并按官方 `sha256sum.txt` 校验。不加 `--skip-ocr` 就不用管它——换电脑只要重跑这一条命令。
 
 需要 Windows 64 位 + Python 3.13；不想使用脚本时也可以执行
 `python -m pip install -r requirements.txt`（依赖装到当前 Python 环境）。
@@ -607,7 +614,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `README.md` | 项目说明：启动、配置、工具用法、目录结构 |
 | `run.py` | 启动本地服务，自动把 `_vendor` 加进模块搜索路径 |
 | `app.py` | FastAPI 路由：工具页、配置、作业、SSE 进度、结果文件 |
-| `bootstrap_deps.py` | 按本机 Python 下载 wheel 并解压到 `_vendor/` |
+| `bootstrap_deps.py` | 按本机 Python 下载 wheel 解压到 `_vendor/`，并下载校验 OpenCodeReview 二进制 |
 | `requirements.txt` | 依赖版本参考（常规 pip 安装时使用） |
 | `config.example.json` | 配置样例；真实 `config.json` 含 API key，已被 gitignore |
 
@@ -685,7 +692,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 
 | 目录 | 说明 |
 |---|---|
-| `_vendor/` | 依赖，含自带 ffmpeg，由 `bootstrap_deps.py` 生成 |
+| `_vendor/` | 依赖，含自带 ffmpeg 和 `ocr/` 下的 OpenCodeReview 二进制，由 `bootstrap_deps.py` 生成 |
 | `_wheels/` | wheel 下载缓存，仅离线重装时有用 |
 | `output/` | 生成的小红书 markdown 笔记 |
 | `work/` | 下载、转码、语音评测的中间文件 |
@@ -745,7 +752,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 ```powershell
 git clone https://github.com/lsj-mm/xhs-summarizer.git
 cd xhs-summarizer
-python bootstrap_deps.py     # 下载依赖到本机 _vendor
+python bootstrap_deps.py     # 下载依赖（含代码审查的 ocr 二进制）到本机 _vendor
 python run.py
 ```
 
@@ -760,17 +767,17 @@ python run.py
 
 | 目录 / 文件 | 大小 | 要不要拷 | 说明 |
 |---|---|---|---|
-| `_vendor/` | 约 115 MB | **必须** | 全部依赖，含自带的 ffmpeg（约 84 MB）和 Web 框架 |
+| `_vendor/` | 约 175 MB | **必须** | 全部依赖：自带 ffmpeg（约 84 MB）、OpenCodeReview 二进制（约 55 MB）和 Web 框架 |
 | `run.py`、`app.py`、`xhs/`、`static/`、`tools/`、`bootstrap_deps.py`、`README.md`、`requirements.txt`、`config.example.json` | 不到 1 MB | **必须** | 程序本体 |
 | `config.json` | 几 KB | 看情况 | **里面是明文 API key**。拷过去省得重填；不想带着 key 走就别拷，到新电脑在网页设置里重填 |
 | `output/` | 视笔记多少 | 看情况 | 已生成的 markdown 笔记，想留就拷 |
 | `_wheels/` | 约 33 MB | 可不拷 | 只是下载缓存，仅在「没网、要靠 `bootstrap_deps.py` 重装依赖」时才有用 |
 | `work/`、`__pycache__/`、`tools/_selfcheck/` | — | 不用拷 | 中间产物与缓存 |
 
-**最小可运行拷贝约 115 MB**；连 `_wheels/` 一起拷约 148 MB。
+**最小可运行拷贝约 175 MB**；连 `_wheels/` 一起拷还会多出下载缓存，仅离线重装时有用。
 
 不想用 Git 也可以直接拷 U 盘/移动硬盘。用 OneDrive、坚果云、Syncthing 同步时，
-先停止服务再让它同步，避免 `output/` 和 `config.json` 同时被两边写入；`_vendor` 有 115 MB，首次同步会比较慢。
+先停止服务再让它同步，避免 `output/` 和 `config.json` 同时被两边写入；`_vendor` 有 175 MB，首次同步会比较慢。
 
 ### 新电脑需要什么
 
@@ -778,6 +785,8 @@ python run.py
    `_vendor` 里的 `pydantic_core` 是编译好的二进制（`_pydantic_core.cp313-win_amd64.pyd`），和 Python 小版本绑定。
    如果新电脑的 Python 不是 3.13，**不要直接拷 `_vendor`**，改在那边执行 `python bootstrap_deps.py`
    （它会按本机解释器挑对应的 wheel）。
+   代码审查的 `ocr` 二进制在 `_vendor/ocr/` 里，跟着 `_vendor` 一起拷就不用重下；
+   没拷 `_vendor` 的话 `bootstrap_deps.py` 会连它一起自动下载，不用再手工找 `ocr.exe`。
 2. **网络**：下载小红书视频、调用转写与总结接口、查 GitHub 仓库都需要联网。
 3. **浏览器登录状态**（可选）：需要登录才能看的笔记靠**本机浏览器**的 cookie，
    所以要在这台电脑的浏览器上登录小红书，并在设置里把「浏览器 Cookie 来源」选成它。

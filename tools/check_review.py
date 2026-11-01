@@ -28,10 +28,44 @@ def main() -> int:
     except (AttributeError, ValueError):
         pass
 
-    ocr = review.find_ocr()
-    check(Path(ocr).is_file(), "能找到 ocr.exe", ocr)
-    check(Path(ocr).stat().st_size > 10_000_000, "ocr.exe 文件完整",
-          f"{Path(ocr).stat().st_size // 1024 // 1024} MB")
+    # 二进制是 55 MB 的第三方发布包，不随仓库走。没装就跳过这两项，
+    # 让这个离线测试在任意机器/CI 上都能跑通；装了才验证完整性。
+    try:
+        ocr = review.find_ocr()
+    except review.ReviewError:
+        ocr = ""
+        print("  - 没找到 ocr 可执行文件，跳过二进制检查；"
+              "运行 python bootstrap_deps.py 可自动下载")
+    if ocr:
+        check(Path(ocr).is_file(), "能找到 ocr.exe", ocr)
+        check(Path(ocr).stat().st_size > 10_000_000, "ocr.exe 文件完整",
+              f"{Path(ocr).stat().st_size // 1024 // 1024} MB")
+
+    # 自动安装逻辑的纯函数：映射错了就会下错包，所以单独盯住
+    import bootstrap_deps
+    check(bootstrap_deps.ocr_asset("Windows", "AMD64")
+          == ("opencodereview-windows-amd64.exe", "ocr.exe"),
+          "Windows/AMD64 映射到正确的发布包")
+    check(bootstrap_deps.ocr_asset("Linux", "x86_64")
+          == ("opencodereview-linux-amd64", "ocr"),
+          "Linux/x86_64 映射到不带后缀的包名")
+    check(bootstrap_deps.ocr_asset("Darwin", "arm64")
+          == ("opencodereview-darwin-arm64", "ocr"),
+          "macOS/arm64 映射正确")
+    try:
+        bootstrap_deps.ocr_asset("Plan9", "mips")
+        check(False, "不认识的平台应给出人工处理提示")
+    except RuntimeError as exc:
+        check("OCR_BIN" in str(exc), "不认识的平台提示用 OCR_BIN 手工指定")
+    check(bootstrap_deps.parse_sha256sums(
+        "abc123  opencodereview-linux-amd64\n"
+        "def456  opencodereview-windows-amd64.exe\n", "opencodereview-windows-amd64.exe"
+    ) == "def456", "能从官方 sha256sum.txt 里取出对应包的哈希")
+    check(bootstrap_deps.parse_sha256sums("abc123  other-file", "missing") == "",
+          "sha256sum.txt 里没有该包时返回空")
+    check(bootstrap_deps.OCR_VERSION.startswith("v")
+          and bootstrap_deps.OCR_MIN_BYTES > 10_000_000,
+          "ocr 版本和最小体积有明确定义", bootstrap_deps.OCR_VERSION)
 
     cfg = {
         "summarizer": {
