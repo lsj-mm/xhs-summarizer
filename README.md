@@ -20,6 +20,7 @@
 | 🎓 学习路径与考核 | 按主题和目标生成阶段路径、资源入口和阶段考核，严格执行 3 次机会、80 分通过、不过重学 |
 | 🔍 代码审查 | 接入 OpenCodeReview，对本地项目做全量扫描/Git 变更审查，生成行级问题与 Markdown 报告 |
 | 📈 GitHub 趋势 | 抓取 GitHub Trending 日榜/周榜/月榜前 10，附中文摘要、Star 数据和可点击仓库链接 |
+| 🧰 外部工具收藏 | 把看到的外部工具按「名称 + 一句话作用 + 链接」存成清单，可搜索、编辑、按标签筛 |
 
 「税率计算」的五个标签页也可以用地址直接打开，例如 `#/salary`、`#/mortgage`、`#/prepay`、`#/carloan`、`#/vat`。
 
@@ -341,6 +342,26 @@ $env:XUNFEI_API_SECRET="你的 APISecret"
 
 ---
 
+## 外部工具收藏
+
+把看到的第三方工具存成一份自己的清单，格式就是你平时记的那句「**工具名**：作用 + 链接」。
+
+- **记录内容**：名称、一句话作用、链接、若干标签；
+- **只做记录**：不抓 GitHub、不校验仓库是否存在。链接是否有效、项目是否靠谱由你自己判断，
+  避免接口限流和误判把简单的事搞复杂；
+- **搜索**：一个输入框同时匹配名称、作用、标签和链接，点标签可快速筛；
+- **编辑 / 删除**：列表里每条都能直接改，删除有二次确认；
+- **去重**：同一链接（忽略大小写和结尾斜杠）只能存一条，避免同一个工具反复加；
+- **校验**：名称必填、链接必须是 `http(s)` 且带主机名（挡掉 `javascript:` 这类写法），
+  名称 ≤80 字符、作用 ≤300 字符、最多 8 个标签（单个 ≤20 字符），超长直接报错不做静默截断；
+- **存放位置**：`work/toolshelf/items.json`，和 `work/learning/plans.json` 一样是本机数据，
+  不进 Git；文件损坏时按空清单处理，不会让页面打不开。
+
+接口 `GET/POST /api/toolshelf/items`、`POST/DELETE /api/toolshelf/items/{id}`；
+离线测试 `python tools/check_toolshelf.py`。
+
+---
+
 ## 小红书视频转笔记
 
 粘贴一条小红书分享链接，工具会自动下载视频、把语音转成文字，然后**按内容类型**整理成 markdown：
@@ -640,6 +661,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `learning.py` | 学习路径：AI 规划、阶段状态、判分、3 次机会与重学 |
 | `review.py` | OpenCodeReview 调用、JSON 解析和 Markdown 报告生成 |
 | `trending.py` | GitHub Trending 抓取、前 10 解析、中文摘要和缓存 |
+| `toolshelf.py` | 外部工具收藏：增删改查、去重、链接与长度校验、标签汇总 |
 | `jobs.py` | 作业状态与事件总线（SSE 历史/增量） |
 | `pipeline.py` | 把解析、下载、转写、总结、落盘串成流水线 |
 | `sandbox.py` | 临时目录权限兼容补丁 |
@@ -665,6 +687,8 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `tools/code-review.meta.json` | 代码审查工具的列表元数据 |
 | `tools/github-trending.html` | GitHub 趋势页面：日榜/周榜/月榜、语言筛选、中文摘要和仓库链接 |
 | `tools/github-trending.meta.json` | GitHub 趋势工具的列表元数据 |
+| `tools/tool-shelf.html` | 外部工具收藏：添加表单、搜索、标签筛选、编辑与删除 |
+| `tools/tool-shelf.meta.json` | 外部工具收藏的列表元数据 |
 | `tools/_shared/base.css` | 各工具共用的基础样式 |
 | `tools/_shared/finance.js` | 金融计算纯函数：个税、社保、摊还、提前还款、IRR |
 | `tools/_shared/loan-ui.js` | 房贷/车贷/提前还款共用的结果渲染 |
@@ -687,6 +711,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `check_learning.py` | 学习计划校验、判分、三次机会状态与答案不泄露测试 |
 | `check_review.py` | OCR 查找、模型映射、报告渲染和路径穿越测试 |
 | `check_trending.py` | GitHub Trending HTML 解析、链接、Star 数和语言筛选测试 |
+| `check_toolshelf.py` | 外部工具收藏的增删改查、去重、长度校验与坏文件容错测试 |
 
 ### 运行期目录（不纳入 Git）
 
@@ -695,7 +720,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `_vendor/` | 依赖，含自带 ffmpeg 和 `ocr/` 下的 OpenCodeReview 二进制，由 `bootstrap_deps.py` 生成 |
 | `_wheels/` | wheel 下载缓存，仅离线重装时有用 |
 | `output/` | 生成的小红书 markdown 笔记 |
-| `work/` | 下载、转码、语音评测的中间文件 |
+| `work/` | 下载、转码、语音评测的中间文件；也存本机数据（`learning/plans.json`、`lottery/saved.json`、`toolshelf/items.json`） |
 | `tools/_selfcheck/` | 离线自检产生的临时文件 |
 | `__pycache__/` | Python 字节码缓存 |
 | `config.json` | 本机配置，含明文 API key，绝不提交 |

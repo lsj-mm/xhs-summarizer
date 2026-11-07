@@ -662,12 +662,12 @@ def main() -> int:
     import app as app_mod  # noqa: PLC0415  导入即构建应用，离线不影响
 
     tool_list = app_mod.discover_tools()
-    check(len(tool_list) >= 8, "扫描到至少八个工具",
+    check(len(tool_list) >= 9, "扫描到至少九个工具",
           "、".join(f"{t['icon']}{t['name']}" for t in tool_list))
     check([t["id"] for t in tool_list] == ["notes", "tax-calc", "english", "keywords",
                                            "lottery", "learning", "code-review",
-                                           "github-trending"],
-          "按 order 排序（笔记、税率、英语、关键字、彩票、学习、代码审查、GitHub 趋势）",
+                                           "github-trending", "tool-shelf"],
+          "按 order 排序（笔记、税率、英语、关键字、彩票、学习、代码审查、GitHub 趋势、外部工具收藏）",
           "、".join(t["id"] for t in tool_list))
     check(all((app_mod.TOOLS_DIR / f"{t['id']}.html").is_file() for t in tool_list),
           "每个工具都有对应的页面文件")
@@ -846,6 +846,18 @@ def main() -> int:
           "GitHub 趋势工具有离线测试")
     check((app_mod.TOOLS_DIR / "github-trending.meta.json").is_file(),
           "GitHub 趋势工具有 meta.json")
+
+    shelf_html = (app_mod.TOOLS_DIR / "tool-shelf.html").read_text(encoding="utf-8")
+    check("外部工具收藏" in shelf_html and "/api/toolshelf/items" in shelf_html,
+          "外部工具收藏页已接入 /api/toolshelf/items")
+    check((PROJECT_ROOT / "xhs" / "toolshelf.py").is_file(),
+          "收藏的增删改查与校验在 xhs/toolshelf.py")
+    check((PROJECT_ROOT / "tools" / "check_toolshelf.py").is_file(),
+          "外部工具收藏有离线测试")
+    check((app_mod.TOOLS_DIR / "tool-shelf.meta.json").is_file(),
+          "外部工具收藏有 meta.json")
+    check(any(tool["id"] == "tool-shelf" for tool in app_mod.discover_tools()),
+          "工具列表能自动发现 tool-shelf")
 
     license_text = (PROJECT_ROOT / "LICENSE").read_text(encoding="utf-8")
     check("MIT License" in license_text and "lsj-mm" in license_text,

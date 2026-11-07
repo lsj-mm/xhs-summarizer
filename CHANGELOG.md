@@ -2,6 +2,16 @@
 
 ## 未发布
 
+### 新增
+
+- 外部工具收藏（`/tool/tool-shelf`）：按「名称 + 一句话作用 + 链接 + 标签」记录第三方工具，
+  支持搜索、编辑、删除和标签筛选；数据存 `work/toolshelf/items.json`，不进 Git
+  - 只做记录，不抓 GitHub、不校验仓库存在与否
+  - 同一链接（忽略大小写与结尾斜杠）不允许重复收藏
+  - 链接必须是 `http(s)` 且带主机名，长度超限直接报错，不做静默截断
+  - 接口 `GET/POST /api/toolshelf/items`、`POST/DELETE /api/toolshelf/items/{id}`
+  - 离线测试 `python tools/check_toolshelf.py`（34 项），已接入 CI
+
 ### 修复
 
 - 换电脑或重新拉代码后，代码审查因缺少 `ocr.exe` 直接报错：`bootstrap_deps.py` 现在会按当前平台

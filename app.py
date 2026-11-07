@@ -34,6 +34,7 @@ from xhs import pipeline as pipeline_mod
 from xhs import pronounce as pronounce_mod
 from xhs import review as review_mod
 from xhs import summarize as summarize_mod
+from xhs import toolshelf as toolshelf_mod
 from xhs import trending as trending_mod
 
 logging.basicConfig(
@@ -587,6 +588,65 @@ async def review_json(report_id: str):
         return FileResponse(path, media_type="application/json", filename=path.name)
     except review_mod.ReviewError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+# ------------------------------------------------------------------ 外部工具收藏
+
+@app.get("/api/toolshelf/items")
+async def toolshelf_items(keyword: str = "") -> dict:
+    try:
+        data = await asyncio.to_thread(toolshelf_mod.list_items, config_mod.load(), keyword)
+        return {"ok": True, **data}
+    except toolshelf_mod.ShelfError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/toolshelf/items")
+async def toolshelf_add(payload: dict) -> dict:
+    body = payload or {}
+    try:
+        item = await asyncio.to_thread(
+            toolshelf_mod.add_item,
+            body.get("name") or "",
+            body.get("url") or "",
+            body.get("purpose") or "",
+            body.get("tags") or [],
+            config_mod.load(),
+        )
+        return {"ok": True, "item": item}
+    except toolshelf_mod.ShelfError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("添加收藏失败")
+        raise HTTPException(status_code=502, detail=f"添加失败：{exc}") from exc
+
+
+@app.post("/api/toolshelf/items/{item_id}")
+async def toolshelf_update(item_id: str, payload: dict) -> dict:
+    try:
+        item = await asyncio.to_thread(
+            toolshelf_mod.update_item, item_id, payload or {}, config_mod.load()
+        )
+        return {"ok": True, "item": item}
+    except toolshelf_mod.ShelfError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("修改收藏失败")
+        raise HTTPException(status_code=502, detail=f"修改失败：{exc}") from exc
+
+
+@app.delete("/api/toolshelf/items/{item_id}")
+async def toolshelf_delete(item_id: str) -> dict:
+    try:
+        item = await asyncio.to_thread(
+            toolshelf_mod.delete_item, item_id, config_mod.load()
+        )
+        return {"ok": True, "item": item}
+    except toolshelf_mod.ShelfError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        LOG.exception("删除收藏失败")
+        raise HTTPException(status_code=502, detail=f"删除失败：{exc}") from exc
 
 
 # ------------------------------------------------------------------ 作业
