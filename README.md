@@ -432,6 +432,26 @@ python run.py
 会自动打开浏览器到 <http://127.0.0.1:8787/>。
 不想自动开浏览器就加 `--no-browser`；换端口用 `--port 9000`。
 
+#### 开机自启（可选，无黑窗口）
+
+想要一开机就能访问，用 `start-hidden.vbs` 挂到当前用户的 Run 键：
+
+```powershell
+$cmd = '"C:\Windows\System32\wscript.exe" //B "' + (Resolve-Path .\start-hidden.vbs) + '"'
+Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'xhs-summarizer' -Value $cmd
+```
+
+它用 `WScript.Shell.Run` 的窗口样式 0 把 cmd 完全隐藏，所以**不会闪黑窗口**；输出照旧重定向到
+`work/server.log`，日志不丢。取消自启：
+
+```powershell
+Remove-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'xhs-summarizer'
+```
+
+> 为什么不用「启动」文件夹里的快捷方式：部分机器上资源管理器不会执行那种快捷方式（`StartupApproved`
+> 里没有记录），而 Run 键稳定得多。为什么不用 `pythonw.exe`：它没有标准输出，`server.log` 会是空的。
+> 换解释器可以设环境变量 `XHS_PYTHON` 指向别的 `python.exe`。
+
 ### 3. 填两个 API key
 
 点右上角**设置**，填这两项，各点一次「测试」按钮确认能通：
