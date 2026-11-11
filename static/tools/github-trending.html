@@ -64,7 +64,7 @@
     <div class="logo">📈</div>
     <div>
       <h1>GitHub 趋势</h1>
-      <div class="sub">Trending 前 10 · 中文摘要 · 仓库链接可点击</div>
+      <div class="sub">热榜前 30 · 中文摘要 · 仓库链接可点击（Trending 之外的标「新晋」）</div>
     </div>
     <div class="grow"></div>
     <span class="pill">数据来自 GitHub Trending</span>
@@ -106,7 +106,7 @@
   <div id="trList"></div>
   <div class="empty" id="trEmpty">
     <div class="big">📈</div>
-    <div>正在读取 GitHub Trending 前 10 条…</div>
+    <div>正在读取 GitHub 热榜前 30 条…</div>
   </div>
 </div>
 
@@ -138,13 +138,16 @@ function render(data) {
   const items = data.items || [];
   $('trList').innerHTML = items.map((item) => {
     const isAi = item.summary_source === 'ai';
+    const isSearch = item.source === 'search';
     const summary = item.summary || item.description || '描述暂缺，建议打开仓库查看';
     const desc = isAi && item.description ? '<div class="desc">原描述：' + esc(item.description) + '</div>' : '';
     return '<div class="tool">'
       + '<div class="rank">' + esc(item.rank) + '</div>'
       + '<div class="main">'
       + '<div class="name"><a href="' + esc(item.url) + '" target="_blank" rel="noreferrer">'
-      + esc(item.full_name) + '</a></div>'
+      + esc(item.full_name) + '</a>'
+      + (isSearch ? ' <span class="pill warn">新晋</span>' : '')
+      + '</div>'
       + '<div class="summary">' + esc(summary) + '</div>'
       + desc
       + '<div class="meta">'
@@ -157,10 +160,15 @@ function render(data) {
       + '</div>';
   }).join('');
   const time = (data.fetched_at || '').replace('T', ' ').slice(0, 16);
+  const mix = (data.trending_count != null)
+    ? '<span>Trending ' + esc(data.trending_count) + (data.supplement_count ? ' + 新晋 ' + esc(data.supplement_count) : '') + '</span>'
+    : '';
   $('trMeta').innerHTML = '<span class="pill ' + (data.ai_summary ? 'ok' : 'warn') + '">'
     + (data.ai_summary ? 'AI 中文摘要' : '原描述回退') + '</span>'
+    + mix
     + '<span>' + esc(time) + '</span>'
-    + (data.cached ? '<span>缓存</span>' : '');
+    + (data.cached ? '<span>缓存</span>' : '')
+    + (data.search_error ? '<span class="pill err">补充失败</span>' : '');
 }
 
 async function load(force) {

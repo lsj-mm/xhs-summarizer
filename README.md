@@ -19,7 +19,7 @@
 | 🎲 彩票模拟摇号 | 大乐透 / 双色球 / 快乐8：官方历史数据、走势统计、单式/复式/胆拖模拟；内置竞彩足球参考，仅供娱乐 |
 | 🎓 学习路径与考核 | 按主题和目标生成阶段路径、资源入口和阶段考核，严格执行 3 次机会、80 分通过、不过重学 |
 | 🔍 代码审查 | 接入 OpenCodeReview，对本地项目做全量扫描/Git 变更审查，生成行级问题与 Markdown 报告 |
-| 📈 GitHub 趋势 | 抓取 GitHub Trending 日榜/周榜/月榜前 10，附中文摘要、Star 数据和可点击仓库链接 |
+| 📈 GitHub 趋势 | 抓取 GitHub 热榜前 30（Trending + 搜索补充），附中文摘要、Star 数据和可点击仓库链接 |
 | 🧰 外部工具收藏 | 把看到的外部工具按「名称 + 一句话作用 + 链接」存成清单，可搜索、编辑、按标签筛 |
 
 「税率计算」的五个标签页也可以用地址直接打开，例如 `#/salary`、`#/mortgage`、`#/prepay`、`#/carloan`、`#/vat`。
@@ -330,13 +330,19 @@ $env:XUNFEI_API_SECRET="你的 APISecret"
 
 ## GitHub 趋势
 
-抓取 [GitHub Trending](https://github.com/trending) 日榜/周榜/月榜，固定展示前 10 条：
+抓取 GitHub 热榜前 30 条（日榜/周榜/月榜）：
 
+- **两个来源**：主榜来自 [GitHub Trending](https://github.com/trending) 页面；该页面匿名访问只列
+  10 条且不分页，所以不足 30 条时用 [GitHub 搜索接口](https://docs.github.com/en/rest/search/search)
+  补「最近创建、按 Star 排序」的仓库，补进来的条目显示为 **新晋** 徽标，和真正的 Trending 条目区分开；
 - **中文摘要**：把英文仓库描述交给默认模型生成一句话中文摘要，失败时回退原文；
 - **真实链接**：每条附 `https://github.com/owner/repo`，点名称或「打开仓库」即可跳转；
-- **元信息**：语言、总 Star、今日/本周/本月新增 Star；
-- **筛选**：按今日/本周/本月、编程语言筛选；
-- **缓存**：同一条件缓存 10 分钟，点「刷新」强制重新抓取。
+- **元信息**：语言、总 Star、今日/本周/本月新增 Star（新晋条目没有「今日新增」，不编造）；
+- **筛选**：按今日/本周/月榜、编程语言筛选，补充条目也会按同语言补；
+- **缓存**：同一条件缓存 10 分钟，点「刷新」强制重新抓取（也顺便压住搜索接口的次数）；
+- **失败降级**：搜索补不到时只展示主榜，页面在状态行标「补充失败」，不影响主榜使用。
+
+配置里填了 `github.token` 会带上鉴权（搜索接口未鉴权时限 10 次/分钟，本项目 10 分钟才请求一次，通常够用）。
 
 接口 `GET /api/trending?since=daily&language=python`；离线测试 `python tools/check_trending.py`。
 
@@ -434,23 +440,30 @@ python run.py
 
 #### 开机自启（可选，无黑窗口）
 
-想要一开机就能访问，用 `start-hidden.vbs` 挂到当前用户的 Run 键：
+`watchdog.py` 是个守护进程：开机登录时启动，之后每 15 秒探测一次端口，服务没在跑就拉起来，
+所以**既不会出现黑窗口，也不怕进程被关掉**。挂到当前用户的 Run 键：
 
 ```powershell
-$cmd = '"C:\Windows\System32\wscript.exe" //B "' + (Resolve-Path .\start-hidden.vbs) + '"'
+$cmd = '"' + (Get-Command pythonw).Source + '" "' + (Resolve-Path .\watchdog.py) + '"'
 Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'xhs-summarizer' -Value $cmd
 ```
 
-它用 `WScript.Shell.Run` 的窗口样式 0 把 cmd 完全隐藏，所以**不会闪黑窗口**；输出照旧重定向到
-`work/server.log`，日志不丢。取消自启：
+服务输出追加到 `work/server.log`，看门狗自己的记录在 `work/watchdog.log`。停止全部并取消自启：
 
 ```powershell
+python watchdog.py --stop
 Remove-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'xhs-summarizer'
 ```
 
+排查时可以只启动/检查一次：`python watchdog.py --once`；也可以从 `work/watchdog.log` 看它重启过几次。
+
 > 为什么不用「启动」文件夹里的快捷方式：部分机器上资源管理器不会执行那种快捷方式（`StartupApproved`
-> 里没有记录），而 Run 键稳定得多。为什么不用 `pythonw.exe`：它没有标准输出，`server.log` 会是空的。
-> 换解释器可以设环境变量 `XHS_PYTHON` 指向别的 `python.exe`。
+> 里没有记录），而 Run 键稳定得多。为什么不再用 `python.exe` 或 `pythonw.exe` 直接跑 `run.py`：
+> 前者会闪黑窗口、窗口被关掉服务就停；后者没有标准输出，日志会是空的。看门狗用 `pythonw` 运行，
+> 子进程也有 `CREATE_NO_WINDOW`，全程没有控制台。
+>
+> 只想「无窗口启动一次」、不要守护时，也可以用 `start-hidden.vbs`：
+> `wscript.exe //B start-hidden.vbs`（它会把输出重定向到 `work/server.log`）。
 
 ### 3. 填两个 API key
 
@@ -680,7 +693,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `football.py` | 竞彩足球参考：500.com 赛程/赔率、比分/半全场/总进球 |
 | `learning.py` | 学习路径：AI 规划、阶段状态、判分、3 次机会与重学 |
 | `review.py` | OpenCodeReview 调用、JSON 解析和 Markdown 报告生成 |
-| `trending.py` | GitHub Trending 抓取、前 10 解析、中文摘要和缓存 |
+| `trending.py` | GitHub 热榜抓取（Trending 页面 + 搜索补充到 30 条）、中文摘要和缓存 |
 | `toolshelf.py` | 外部工具收藏：增删改查、去重、链接与长度校验、标签汇总 |
 | `jobs.py` | 作业状态与事件总线（SSE 历史/增量） |
 | `pipeline.py` | 把解析、下载、转写、总结、落盘串成流水线 |
@@ -705,7 +718,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `tools/learning.meta.json` | 学习路径工具的列表元数据 |
 | `tools/code-review.html` | 代码审查页面：项目路径、扫描模式、问题列表和报告下载 |
 | `tools/code-review.meta.json` | 代码审查工具的列表元数据 |
-| `tools/github-trending.html` | GitHub 趋势页面：日榜/周榜/月榜、语言筛选、中文摘要和仓库链接 |
+| `tools/github-trending.html` | GitHub 趋势页面：日榜/周榜/月榜、语言筛选、前 30 条、新晋标记、中文摘要和仓库链接 |
 | `tools/github-trending.meta.json` | GitHub 趋势工具的列表元数据 |
 | `tools/tool-shelf.html` | 外部工具收藏：添加表单、搜索、标签筛选、编辑与删除 |
 | `tools/tool-shelf.meta.json` | 外部工具收藏的列表元数据 |
@@ -730,7 +743,7 @@ python bootstrap_deps.py --upgrade --only yt-dlp
 | `check_football.py` | 500.com 行解析、赔率概率、推荐结构与缺失数据处理测试 |
 | `check_learning.py` | 学习计划校验、判分、三次机会状态与答案不泄露测试 |
 | `check_review.py` | OCR 查找、模型映射、报告渲染和路径穿越测试 |
-| `check_trending.py` | GitHub Trending HTML 解析、链接、Star 数和语言筛选测试 |
+| `check_trending.py` | 热榜 HTML 解析、搜索补充、去重合并、Star 数与语言筛选测试 |
 | `check_toolshelf.py` | 外部工具收藏的增删改查、去重、长度校验与坏文件容错测试 |
 
 ### 运行期目录（不纳入 Git）

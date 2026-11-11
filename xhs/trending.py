@@ -2,10 +2,13 @@
 """GitHub Trending 趋势工具。
 
 边界：
-    - 只读取 GitHub Trending 页面，不调用 GitHub API，因此没有 API 限流；
-    - 严格取前 10 条，链接和数字都来自页面；
+    - 主榜读 GitHub Trending 页面，不调用 API，因此没有核心接口限流；
+    - 页面匿名访问只列 10 条（且不分页），要凑满 30 条时用 GitHub 搜索接口
+      补「最近创建、按 Star 排序」的仓库，补进来的条目会标 source=search，
+      页面显示为「新晋」，和真正的 Trending 条目区分开；
+    - 链接和数字都来自页面/接口，不自己编；
     - 中文一句话摘要用默认模型生成，失败时回退到英文原描述；
-    - 结果缓存 10 分钟，避免反复抓取。
+    - 结果缓存 10 分钟，避免反复抓取，也压住搜索接口的次数。
 """
 
 from __future__ import annotations
@@ -27,8 +30,11 @@ from . import summarize as summarize_mod
 LOG = logging.getLogger(__name__)
 
 TRENDING_URL = "https://github.com/trending"
+SEARCH_URL = "https://api.github.com/search/repositories"
 CACHE_TTL = 600
-LIMIT = 10
+LIMIT = 30
+# 补齐时按 since 取「最近多久创建」的仓库，和榜单周期对应
+SEARCH_WINDOW_DAYS = {"daily": 7, "weekly": 14, "monthly": 31}
 LANGUAGES = [
     ("", "全部语言"), ("python", "Python"), ("typescript", "TypeScript"),
     ("javascript", "JavaScript"), ("go", "Go"), ("rust", "Rust"),
@@ -92,10 +98,101 @@ def parse_trending_html(source: str, since: str = "daily", limit: int = LIMIT) -
             "stars_today": stars_today,
             "stars_today_label": since_label,
             "stars_today_num": _parse_int(stars_today),
+            "source": "trending",
         })
         if len(items) >= limit:
             break
     return items
+
+
+def parse_search_items(payload: dict, start_rank: int = 1, exclude: set[str] | None = None) -> list[dict]:
+    """把 GitHub 搜索接口的结果转成和 Trending 一样的条目；纯函数，便于离线测试。
+
+    这些不是 Trending 页面里的项目，所以 source=search，前端会标成「新晋」，
+    并且没有「今日新增 Star」这种数据（页面才有）。
+    """
+    rows = payload.get("items") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        return []
+    skip = {name.lower() for name in (exclude or set())}
+    items: list[dict] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        full_name = str(row.get("full_name") or "").strip()
+        if not full_name or full_name.lower() in skip:
+            continue
+        skip.add(full_name.lower())
+        stars = row.get("stargazers_count")
+        items.append({
+            "rank": start_rank + len(items),
+            "full_name": full_name,
+            "name": full_name.replace("/", " / "),
+            "url": str(row.get("html_url") or f"https://github.com/{full_name}"),
+            "description": _clean(str(row.get("description") or "")),
+            "language": str(row.get("language") or ""),
+            "stars": f"{stars:,}" if isinstance(stars, int) else "",
+            "stars_today": "",
+            "stars_today_label": "",
+            "stars_today_num": 0,
+            "source": "search",
+            "created_at": str(row.get("created_at") or ""),
+        })
+    return items
+
+
+def merge_items(primary: list[dict], extra: list[dict], limit: int = LIMIT) -> list[dict]:
+    """主榜在前、补位在后，按仓库全名去重，最后统一重排名次。"""
+    merged: list[dict] = []
+    seen: set[str] = set()
+    for item in list(primary) + list(extra):
+        key = str(item.get("full_name") or "").lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        merged.append(item)
+        if len(merged) >= limit:
+            break
+    for index, item in enumerate(merged, start=1):
+        item["rank"] = index
+    return merged
+
+
+def _github_token(config: dict) -> str:
+    return str(((config.get("github") or {}).get("token")) or "").strip()
+
+
+def _search_supplement(need: int, since: str, exclude: set[str], config: dict,
+                       language: str = "") -> list[dict]:
+    """用搜索接口补「最近创建、按 Star 排序」的仓库，把榜单凑到 30 条。
+
+    只在主榜不够时调用，一次刷新最多一次请求；配了 github.token 就走鉴权，
+    没配时匿名也够用（搜索接口未鉴权限 10 次/分钟，而我们 10 分钟才刷新一次）。
+    """
+    if need <= 0:
+        return []
+    days = SEARCH_WINDOW_DAYS.get(since, 7)
+    created = (dt.date.today() - dt.timedelta(days=days)).isoformat()
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; ToolboxTrending/1.0)",
+        "Accept": "application/vnd.github+json",
+    }
+    token = _github_token(config)
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    params = {
+        "q": f"created:>={created}" + (f" language:{language}" if language else ""),
+        "sort": "stars",
+        "order": "desc",
+        "per_page": min(100, need + len(exclude) + 10),
+    }
+    try:
+        response = requests.get(SEARCH_URL, params=params, timeout=25, headers=headers)
+        response.raise_for_status()
+        payload = response.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise TrendingError(f"补充榜单失败：{exc}") from exc
+    return parse_search_items(payload, start_rank=len(exclude) + 1, exclude=exclude)[:need]
 
 
 def _readme_description(full_name: str) -> str:
@@ -138,9 +235,9 @@ def _translate(items: list[dict], config: dict) -> tuple[list[str], bool]:
         for i, item in enumerate(items)
     ]
     prompt = (
-        "下面是 GitHub Trending 的 10 个项目。请为每个项目写一句简体中文摘要，"
-        "只依据 name 和 desc，不要猜测或编造功能。desc 为空时写"
-        "「描述暂缺，建议打开仓库查看」，不要补功能。返回 JSON 数组，"
+        f"下面是 GitHub 趋势榜单的 {len(items)} 个项目（含 Trending 页面和搜索补充）。"
+        "请为每个项目写一句简体中文摘要，只依据 name 和 desc，不要猜测或编造功能。"
+        "desc 为空时写「描述暂缺，建议打开仓库查看」，不要补功能。返回 JSON 数组，"
         "每项格式 {\"i\": 原索引, \"summary\": \"一句话中文摘要\"}，不要输出其它文字。\n\n"
         + json.dumps(payload, ensure_ascii=False)
     )
@@ -194,9 +291,28 @@ def fetch_trending(since: str = "daily", language: str = "",
         raise TrendingError(f"抓取 GitHub Trending 失败：{exc}") from exc
 
     items = parse_trending_html(response.text, since=since, limit=LIMIT)
+    if not items:
+        raise TrendingError("GitHub Trending 页面没有解析到任何项目，可能是页面改版，请稍后再试")
+    trending_count = len(items)
+
+    # 页面匿名访问只给 10 条，剩下的用搜索接口补；补不到就只展示主榜，不报错
+    supplement: list[dict] = []
+    search_error = ""
     if len(items) < LIMIT:
-        raise TrendingError(f"GitHub Trending 只解析到 {len(items)} 条，少于 10 条，已停止展示")
-    for item in items:
+        try:
+            supplement = _search_supplement(
+                LIMIT - len(items), since,
+                {item["full_name"] for item in items},
+                config or config_mod.load(),
+                language,
+            )
+        except TrendingError as exc:
+            search_error = str(exc)
+            LOG.warning("趋势补充失败，只展示主榜 %s 条：%s", len(items), exc)
+    items = merge_items(items, supplement, limit=LIMIT)
+
+    # 描述缺失时最多回填 10 条，避免几十次请求把刷新拖慢
+    for item in items[:10]:
         if not item.get("description"):
             item["description"] = _readme_description(item["full_name"])
     summaries, ai_ok = _translate(items, config or config_mod.load())
@@ -212,6 +328,9 @@ def fetch_trending(since: str = "daily", language: str = "",
         "fetched_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
         "source": url,
         "count": len(items),
+        "trending_count": trending_count,
+        "supplement_count": len([item for item in items if item.get("source") == "search"]),
+        "search_error": search_error,
         "items": items,
         "ai_summary": ai_ok,
         "cached": False,
